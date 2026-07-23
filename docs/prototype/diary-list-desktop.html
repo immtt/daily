@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>桌面布局 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* 桌面宽屏：侧栏 + 主列表，仍共用同一套视觉 token */
+    .desktop-shell {
+      min-height: calc(100dvh - 36px);
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .desktop-top {
+      height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 36px;
+      z-index: 10;
+    }
+    .desktop-top .logo {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .desktop-top .logo span { color: var(--brand); }
+    .desktop-body {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .desktop-side {
+      padding: 24px 20px;
+      border-right: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .desktop-main { padding: 24px 28px; }
+    .desktop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+    .desktop-grid .entry-card { margin: 0; }
+    @media (max-width: 767px) {
+      .desktop-body { grid-template-columns: 1fr; }
+      .desktop-side { display: none; }
+      .hint-mobile {
+        display: block !important;
+        margin: 16px;
+        padding: 14px;
+        background: var(--brand-soft);
+        border-radius: 12px;
+        font-size: 13px;
+        color: var(--brand-deep);
+      }
+    }
+    .hint-mobile { display: none; }
+  </style>
+</head>
+<body>
+  <div class="proto-banner" style="position:sticky;top:0">
+    桌面宽屏自适应参考 · 窄屏会隐藏侧栏 ·
+    <a href="mobile-diary-list.html" style="color:#b8e8e6">手机主界面更推荐</a> ·
+    <a href="index.html" style="color:#b8e8e6">导航</a>
+  </div>
+
+  <div class="hint-mobile">
+    当前窗口较窄，已切换为单列。完整手机体验请打开
+    <a href="mobile-diary-list.html">日记列表 · 手机主界面</a>
+  </div>
+
+  <div class="desktop-shell">
+    <header class="desktop-top">
+      <div class="logo">复<span>盘</span>日记</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a href="diary-edit.html" class="btn btn-primary btn-sm">写复盘</a>
+        <a href="admin.html" class="btn btn-ghost btn-sm">管理</a>
+        <a href="login.html" class="btn btn-ghost btn-sm">退出</a>
+      </div>
+    </header>
+
+    <div class="desktop-body">
+      <aside class="desktop-side">
+        <h3 style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:16px">筛选</h3>
+        <div class="field">
+          <label>起始日期</label>
+          <input class="input" type="date" value="2026-07-01">
+        </div>
+        <div class="field">
+          <label>结束日期</label>
+          <input class="input" type="date" value="2026-07-23">
+        </div>
+        <div class="field">
+          <label>股票代码</label>
+          <input class="input" type="text" placeholder="如 600519">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-block btn-sm" type="button">查询</button>
+          <button class="btn btn-secondary btn-block btn-sm" type="button">重置</button>
+        </div>
+      </aside>
+
+      <main class="desktop-main">
+        <div class="day-label" style="margin-top:0">最近复盘</div>
+        <div class="desktop-grid">
+          <a class="entry-card" href="diary-detail.html">
+            <div class="etitle">今日复盘：半导体板块强势</div>
+            <div class="entry-row">
+              <span>07-23</span>
+              <span class="stock">600519 贵州茅台</span>
+              <span class="pnl-up">+1,200</span>
+            </div>
+          </a>
+          <a class="entry-card" href="diary-detail.html">
+            <div class="etitle">止损反思：过早离场</div>
+            <div class="entry-row">
+              <span>07-22</span>
+              <span class="stock">000001 平安银行</span>
+              <span class="pnl-down">-350</span>
+            </div>
+          </a>
+          <a class="entry-card" href="diary-detail.html">
+            <div class="etitle">周报：本周操作总结</div>
+            <div class="entry-row">
+              <span>07-19</span>
+              <span class="stock">AAPL</span>
+              <span class="pnl-up">+2,800</span>
+            </div>
+          </a>
+          <a class="entry-card" href="diary-detail.html">
+            <div class="etitle">追高踩踏：情绪失控记录</div>
+            <div class="entry-row">
+              <span>07-18</span>
+              <span class="stock">300750 宁德时代</span>
+              <span class="pnl-down">-1,050</span>
+            </div>
+          </a>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

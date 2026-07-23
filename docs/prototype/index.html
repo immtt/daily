@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>原型导航 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="proto-banner">高保真原型 · 手机优先 · 请用手机打开或缩窄浏览器窗口体验自适应</div>
+
+  <div class="nav-page">
+    <h1>复盘日记</h1>
+    <p class="lead">股票复盘日记本 · PWA 多端同步 · 管理员审核注册<br>
+      主场景按<strong style="color:#7dd3d0">手机端</strong>设计，桌面端自动适配。</p>
+
+    <div class="nav-section">推荐从这里开始</div>
+    <div class="nav-grid">
+      <a class="nav-card" href="mobile-diary-list.html">
+        <h3>日记列表 · 手机主界面</h3>
+        <p>底部导航、筛选抽屉、盈亏红绿、PWA 提示</p>
+        <span class="badge-rec">主用页面</span>
+      </a>
+      <a class="nav-card" href="diary-edit.html">
+        <h3>新建 / 编辑复盘</h3>
+        <p>标题加粗、结构化字段、富文本与插图</p>
+        <span class="badge-rec">核心录入</span>
+      </a>
+      <a class="nav-card" href="login.html">
+        <h3>登录</h3>
+        <p>品牌首屏 + 表单</p>
+      </a>
+    </div>
+
+    <div class="nav-section">全部页面</div>
+    <div class="nav-grid">
+      <a class="nav-card" href="login.html"><h3>登录</h3><p>账号密码登录</p></a>
+      <a class="nav-card" href="register.html"><h3>注册</h3><p>提交后等待审核</p></a>
+      <a class="nav-card" href="mobile-diary-list.html"><h3>日记列表</h3><p>手机优先主页</p></a>
+      <a class="nav-card" href="diary-detail.html"><h3>日记详情</h3><p>只读 + 编辑删除</p></a>
+      <a class="nav-card" href="diary-edit.html"><h3>新建编辑</h3><p>结构化 + 富文本</p></a>
+      <a class="nav-card" href="admin.html"><h3>用户审核</h3><p>管理员专用</p></a>
+      <a class="nav-card" href="diary-list-desktop.html"><h3>桌面宽屏布局</h3><p>侧栏筛选自适应参考</p></a>
+    </div>
+
+    <div class="nav-section">设计文档</div>
+    <div class="nav-grid">
+      <a class="nav-card" href="../README.md"><h3>文档总览</h3><p>索引与管理员账号</p></a>
+      <a class="nav-card" href="../01-需求说明.md"><h3>需求说明</h3><p>功能与验收</p></a>
+      <a class="nav-card" href="../02-产品原型说明.md"><h3>原型说明</h3><p>交互与视觉规范</p></a>
+      <a class="nav-card" href="../03-技术架构.md"><h3>技术架构</h3><p>栈与部署</p></a>
+    </div>
+
+    <div class="admin-note">
+      <strong style="color:#fff">默认管理员</strong><br><br>
+      用户名 <code>admin</code>　　初始密码 <code>ChangeMe_Admin_2026</code><br><br>
+      <span style="color:#9aadb5;font-size:13px">用于审核新用户注册，部署后请立即修改密码。</span>
+    </div>
+  </div>
+
+  <script>
+    // 窄屏自动进入「真机铺满」体验提示
+    if (window.matchMedia('(max-width: 480px)').matches) {
+      document.querySelector('.proto-banner').innerHTML =
+        '高保真原型 · 当前为手机全宽模式 · <a href="mobile-diary-list.html">进入主界面 →</a>';
+    }
+  </script>
+</body>
+</html>

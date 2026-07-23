@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>日记详情 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mobile-live">
+  <div class="proto-banner">详情 · 情绪用表情展示 · <a href="index.html">导航</a></div>
+
+  <div class="device-stage">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="status-bar"><span>16:36</span><span class="icons">■■■ ▓</span></div>
+      </div>
+
+      <div class="app">
+        <header class="app-header">
+          <a href="mobile-diary-list.html" class="header-btn" aria-label="返回">←</a>
+          <div class="title">详情</div>
+          <div style="width:40px"></div>
+        </header>
+
+        <div class="app-scroll">
+          <div class="detail-hero">
+            <h1>今日复盘：半导体板块强势</h1>
+            <div class="entry-row">
+              <span>📅 2026-07-23</span>
+              <span>·</span>
+              <span>编辑于 16:30</span>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-cell" style="grid-column:1/-1">
+              <div class="k">关联股票（正文自动识别）</div>
+              <div class="v" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+                <span class="stock">600519 贵州茅台</span>
+                <span class="stock">688981 中芯国际</span>
+              </div>
+            </div>
+            <div class="meta-cell">
+              <div class="k">当日盈亏</div>
+              <div class="v pnl-up">+1,200 元</div>
+            </div>
+            <div class="meta-cell">
+              <div class="k">总盈亏</div>
+              <div class="v pnl-up">+8,600 元</div>
+            </div>
+            <div class="meta-cell">
+              <div class="k">情绪</div>
+              <div class="v" style="display:flex;align-items:center;gap:6px;font-size:18px">
+                <span>😌</span>
+                <span style="font-size:15px;font-weight:600">冷静</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-body">
+            <h3>大盘概况</h3>
+            <p>今日沪指涨 0.8%，半导体板块领涨，成交额放大至 1.2 万亿。</p>
+            <h3>操作回顾</h3>
+            <ul style="padding-left:20px">
+              <li>600519 突破前高后加仓 100 股，成本 1680</li>
+              <li>688981 早盘低吸，尾盘浮盈 3.2%</li>
+            </ul>
+            <h3>反思</h3>
+            <p>追涨时仓位控制较好，但 688981 入场偏早，应等确认后再进。</p>
+            <div class="mock-img" style="margin-top:16px;height:140px;border-radius:12px;background:linear-gradient(135deg,#dff0ef,#f5ebe3);display:grid;place-items:center;color:#095456;font-size:13px;font-weight:600;border:1px dashed rgba(13,115,119,.3)">📊 K 线图（正文内插图）</div>
+          </div>
+
+          <div class="detail-actions">
+            <a href="diary-edit.html" class="btn btn-primary btn-block">编辑</a>
+            <button class="btn btn-danger btn-block" type="button" onclick="if(confirm('确定删除？不可恢复'))location.href='mobile-diary-list.html'">删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

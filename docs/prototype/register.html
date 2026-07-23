@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>注册 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mobile-live">
+  <div class="proto-banner">注册页 · <a href="index.html">导航</a> · <a href="login.html">登录</a></div>
+
+  <div class="device-stage">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="status-bar"><span>16:36</span><span class="icons">■■■ ▓</span></div>
+      </div>
+
+      <div class="app">
+        <div class="auth-screen">
+          <div class="auth-brand">
+            <div class="auth-mark">复</div>
+            <h1>创建账号</h1>
+            <p>提交后需管理员审核</p>
+          </div>
+
+          <div class="alert alert-success" id="ok" style="display:none">
+            ✓ 注册成功！请等待管理员审核，通过后方可登录。
+          </div>
+
+          <form id="reg">
+            <div class="field">
+              <label>用户名</label>
+              <input class="input" type="text" placeholder="3–20 位字母或数字" required>
+            </div>
+            <div class="field">
+              <label>密码</label>
+              <input class="input" type="password" placeholder="至少 6 位" required>
+            </div>
+            <div class="field">
+              <label>确认密码</label>
+              <input class="input" type="password" placeholder="再次输入密码" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px">提交注册</button>
+          </form>
+
+          <div class="auth-footer">
+            已有账号？ <a href="login.html">返回登录</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('reg').addEventListener('submit', e => {
+      e.preventDefault();
+      e.target.style.display = 'none';
+      document.getElementById('ok').style.display = 'flex';
+    });
+  </script>
+</body>
+</html>

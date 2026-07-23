@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>日记列表 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mobile-live">
+  <div class="proto-banner">主界面 · 顶栏不再放「新建」（用底部「写复盘」）· <a href="index.html">导航</a></div>
+
+  <div class="device-stage split">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="status-bar"><span>16:36</span><span class="icons">■■■ ▓</span></div>
+      </div>
+
+      <div class="app">
+        <header class="app-header">
+          <div class="title" style="flex:1">复<span>盘</span>日记</div>
+        </header>
+
+        <div class="app-scroll">
+          <div class="pwa-toast">
+            <span>📲 添加到桌面，像 App 一样使用</span>
+            <button type="button" onclick="this.parentElement.remove()">知道了</button>
+          </div>
+
+          <div class="filter-strip">
+            <button class="chip-btn active" type="button">全部</button>
+            <button class="chip-btn" type="button" id="openFilter">筛选 ▾</button>
+            <button class="chip-btn" type="button">本周</button>
+            <button class="chip-btn" type="button">本月</button>
+            <button class="chip-btn" type="button">600519</button>
+          </div>
+
+          <div class="list-pad">
+            <div class="day-label">今天 · 7月23日</div>
+
+            <a class="entry-card" href="diary-detail.html">
+              <div class="etitle">今日复盘：半导体板块强势</div>
+              <div class="entry-row">
+                <span class="stock">600519 贵州茅台</span>
+                <span class="stock">688981 中芯国际</span>
+                <span class="pnl-up">当日 +1,200</span>
+                <span style="color:var(--muted);font-size:12px">总 +8,600</span>
+              </div>
+            </a>
+
+            <div class="day-label">昨天 · 7月22日</div>
+
+            <a class="entry-card" href="diary-detail.html">
+              <div class="etitle">止损反思：过早离场</div>
+              <div class="entry-row">
+                <span class="stock">000001 平安银行</span>
+                <span class="pnl-down">当日 -350</span>
+                <span style="color:var(--muted);font-size:12px">总 +7,400</span>
+              </div>
+            </a>
+
+            <div class="day-label">上周 · 7月19日</div>
+
+            <a class="entry-card" href="diary-detail.html">
+              <div class="etitle">周报：本周操作总结</div>
+              <div class="entry-row">
+                <span class="stock">AAPL</span>
+                <span class="stock">TSLA</span>
+                <span class="pnl-up">当日 +2,800</span>
+                <span style="color:var(--muted);font-size:12px">总 +10,200</span>
+              </div>
+            </a>
+
+            <a class="entry-card" href="diary-detail.html">
+              <div class="etitle">追高踩踏：情绪失控记录</div>
+              <div class="entry-row">
+                <span class="stock">300750 宁德时代</span>
+                <span class="pnl-down">当日 -1,050</span>
+                <span style="color:var(--muted);font-size:12px">总 +7,750</span>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <nav class="tab-bar">
+          <a class="tab-item active" href="mobile-diary-list.html">
+            <span class="ico">📓</span>日记
+          </a>
+          <a class="tab-item" href="diary-edit.html">
+            <span class="ico">✏️</span>写复盘
+          </a>
+          <a class="tab-item" href="admin.html">
+            <span class="ico">👤</span>管理
+          </a>
+        </nav>
+
+        <div class="sheet-overlay" id="sheet">
+          <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <h3>筛选日记</h3>
+            <div class="field">
+              <label>起始日期</label>
+              <input class="input" type="date" value="2026-07-01">
+            </div>
+            <div class="field">
+              <label>结束日期</label>
+              <input class="input" type="date" value="2026-07-23">
+            </div>
+            <div class="field">
+              <label>股票代码</label>
+              <input class="input" type="text" placeholder="从代码库搜索，如 贵州茅台 / 600519">
+            </div>
+            <div class="sheet-actions">
+              <button class="btn btn-secondary btn-block" type="button" id="closeFilter">重置</button>
+              <button class="btn btn-primary btn-block" type="button" id="applyFilter">查询</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="stage-aside">
+      <h2>手机主场景</h2>
+      <p>「写复盘」只保留底部 Tab 一个入口，避免顶栏重复按钮。</p>
+      <ul>
+        <li><strong>新建入口</strong>：底部「写复盘」</li>
+        <li><strong>选股</strong>：正文输入代码自动标签化，无需手动选</li>
+        <li><strong>已去掉</strong>：评分、标签</li>
+        <li><strong>盈亏配色</strong>：红涨绿跌</li>
+      </ul>
+    </aside>
+  </div>
+
+  <script>
+    const sheet = document.getElementById('sheet');
+    document.getElementById('openFilter').onclick = () => sheet.classList.add('open');
+    document.getElementById('closeFilter').onclick = () => sheet.classList.remove('open');
+    document.getElementById('applyFilter').onclick = () => sheet.classList.remove('open');
+    sheet.onclick = () => sheet.classList.remove('open');
+  </script>
+</body>
+</html>

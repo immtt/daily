@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>登录 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mobile-live">
+  <div class="proto-banner">登录页 · <a href="index.html">导航</a> · <a href="register.html">注册</a></div>
+
+  <div class="device-stage">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="status-bar"><span>16:36</span><span class="icons">■■■ ▓</span></div>
+      </div>
+
+      <div class="app">
+        <div class="auth-screen">
+          <div class="auth-brand">
+            <div class="auth-mark">复</div>
+            <h1>复盘日记</h1>
+            <p>记录每一次交易思考</p>
+          </div>
+
+          <!-- 可切换错误态：取消注释下一行 -->
+          <!-- <div class="alert alert-error">账号待审核，请等待管理员通过</div> -->
+
+          <form onsubmit="event.preventDefault(); location.href='mobile-diary-list.html'">
+            <div class="field">
+              <label>用户名</label>
+              <input class="input" type="text" placeholder="请输入用户名" value="demo" autocomplete="username">
+            </div>
+            <div class="field">
+              <label>密码</label>
+              <input class="input" type="password" placeholder="请输入密码" value="••••••••" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px">登录</button>
+          </form>
+
+          <div class="auth-footer">
+            还没有账号？ <a href="register.html">立即注册</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

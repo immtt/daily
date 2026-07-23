@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>新建复盘 — 复盘日记</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .mood-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .mood-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 4px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .mood-btn .emoji { font-size: 24px; line-height: 1; }
+    .mood-btn .lab { font-size: 11px; color: var(--muted); font-weight: 500; }
+    .mood-btn.on {
+      border-color: var(--brand);
+      background: var(--brand-soft);
+      box-shadow: 0 0 0 3px rgba(13, 115, 119, 0.12);
+    }
+    .mood-btn.on .lab { color: var(--brand-deep); font-weight: 600; }
+
+    .editor-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 8px;
+      line-height: 1.5;
+    }
+    .editor-bar button {
+      width: auto;
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 正文内股票代码自动标签 */
+    .editor-body .stock-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 8px;
+      margin: 0 2px;
+      border-radius: 6px;
+      background: var(--brand-soft);
+      color: var(--brand-deep);
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      vertical-align: baseline;
+    }
+    .editor-body .stock-inline .n {
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
+    /* 自动识别摘要（只读，不选手动选择） */
+    .auto-stocks {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: var(--brand-soft);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--brand-deep);
+      line-height: 1.6;
+    }
+    .auto-stocks strong { font-weight: 700; }
+    .auto-stocks .stock {
+      margin: 2px 4px 2px 0;
+    }
+  </style>
+</head>
+<body class="mobile-live">
+  <div class="proto-banner">正文输入代码即自动标签化 · 无需手动选股 · <a href="index.html">导航</a></div>
+
+  <div class="device-stage">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="status-bar"><span>16:36</span><span class="icons">■■■ ▓</span></div>
+      </div>
+
+      <div class="app">
+        <header class="app-header">
+          <a href="mobile-diary-list.html" class="header-btn" aria-label="返回">←</a>
+          <div class="title">新建复盘</div>
+          <div style="width:40px"></div>
+        </header>
+
+        <div class="app-scroll">
+          <div class="edit-pad">
+            <div class="field">
+              <input class="input title-field" type="text" value="今日复盘：半导体板块强势" placeholder="输入标题（自动加粗）">
+            </div>
+
+            <div class="field">
+              <label>复盘日期</label>
+              <input class="input" type="date" value="2026-07-23">
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label>当日盈亏（元）</label>
+                <input class="input" type="number" value="1200" placeholder="可正可负">
+              </div>
+              <div class="field">
+                <label>总盈亏（元）</label>
+                <input class="input" type="number" value="8600" placeholder="账户累计">
+              </div>
+            </div>
+
+            <div class="field">
+              <label>情绪 <span style="font-weight:400;color:var(--muted)">（点选表情）</span></label>
+              <div class="mood-row" id="mood">
+                <button type="button" class="mood-btn on" data-mood="calm">
+                  <span class="emoji">😌</span><span class="lab">冷静</span>
+                </button>
+                <button type="button" class="mood-btn" data-mood="anxious">
+                  <span class="emoji">😰</span><span class="lab">焦虑</span>
+                </button>
+                <button type="button" class="mood-btn" data-mood="greedy">
+                  <span class="emoji">🤑</span><span class="lab">贪婪</span>
+                </button>
+                <button type="button" class="mood-btn" data-mood="fearful">
+                  <span class="emoji">😨</span><span class="lab">恐惧</span>
+                </button>
+                <button type="button" class="mood-btn" data-mood="other">
+                  <span class="emoji">😐</span><span class="lab">其他</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="section-label">正文</div>
+            <p class="editor-hint">先点正文某处，再点「插图」插到该位置。没有固定插图位。</p>
+            <div class="editor">
+              <div class="editor-bar">
+                <button type="button" class="on" title="加粗选中文字"><b>B</b></button>
+                <button type="button" title="斜体"><i>I</i></button>
+                <button type="button" id="btnList" title="在正文插入列表">≡ 列表</button>
+                <button type="button" id="btnImg" title="在正文插入图片">🖼 插图</button>
+              </div>
+              <div class="editor-body" id="editor" contenteditable="true">
+                <p><strong>大盘概况</strong>：今日沪指涨 0.8%，半导体板块领涨，成交额放大至 1.2 万亿。</p>
+                <p><strong>操作回顾</strong>：</p>
+                <ul>
+                  <li><span class="stock-inline" contenteditable="false" data-code="600519">600519<span class="n">贵州茅台</span></span> 突破前高后加仓 100 股，成本 1680</li>
+                  <li><span class="stock-inline" contenteditable="false" data-code="688981">688981<span class="n">中芯国际</span></span> 早盘低吸，尾盘浮盈 3.2%</li>
+                </ul>
+                <p><strong>反思</strong>：追涨时仓位控制较好，但 <span class="stock-inline" contenteditable="false" data-code="688981">688981<span class="n">中芯国际</span></span> 入场偏早，应等确认后再进。</p>
+              </div>
+            </div>
+            <div class="auto-stocks" id="autoStocks">
+              <strong>自动识别（用于按代码查询）</strong><br>
+              <span class="stock">600519 贵州茅台</span>
+              <span class="stock">688981 中芯国际</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sticky-save">
+          <button class="btn btn-primary btn-block" type="button" onclick="location.href='mobile-diary-list.html'">保存复盘</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CATALOG = {
+      '600519': '贵州茅台',
+      '688981': '中芯国际',
+      '000001': '平安银行',
+      '300750': '宁德时代',
+      '600809': '山西汾酒',
+      '000568': '泸州老窖'
+    };
+
+    document.querySelectorAll('#mood .mood-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('#mood .mood-btn').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+      };
+    });
+
+    const editor = document.getElementById('editor');
+    const autoStocks = document.getElementById('autoStocks');
+    let savedRange = null;
+    let tagifyTimer = null;
+
+    function saveSelection() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        savedRange = range.cloneRange();
+      }
+    }
+
+    function refreshAutoSummary() {
+      const codes = [...editor.querySelectorAll('.stock-inline')]
+        .map(el => el.dataset.code)
+        .filter(Boolean);
+      const unique = [...new Set(codes)];
+      if (!unique.length) {
+        autoStocks.innerHTML = '<strong>自动识别</strong><br><span style="opacity:.7">正文中输入股票代码后会自动出现在这里</span>';
+        return;
+      }
+      autoStocks.innerHTML =
+        '<strong>自动识别（用于按代码查询）</strong><br>' +
+        unique.map(c => `<span class="stock">${c} ${CATALOG[c] || ''}</span>`).join('');
+    }
+
+    function placeCaretAfter(node) {
+      const sel = window.getSelection();
+      const r = document.createRange();
+      r.setStartAfter(node);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      savedRange = r.cloneRange();
+    }
+
+    /** 将正文中匹配代码库的纯文本代码替换为行内标签 */
+    function tagifyCodes() {
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          if (node.parentElement?.closest('.stock-inline, .mock-img')) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+
+      const targets = [];
+      while (walker.nextNode()) targets.push(walker.currentNode);
+
+      let changed = false;
+      for (const textNode of targets) {
+        const text = textNode.nodeValue;
+        // A股 6 位代码；匹配代码库才标签化
+        const re = /\b(\d{6})\b/g;
+        let match;
+        const parts = [];
+        let last = 0;
+        let hit = false;
+        while ((match = re.exec(text)) !== null) {
+          const code = match[1];
+          if (!CATALOG[code]) continue;
+          hit = true;
+          if (match.index > last) parts.push(document.createTextNode(text.slice(last, match.index)));
+          const span = document.createElement('span');
+          span.className = 'stock-inline';
+          span.contentEditable = 'false';
+          span.dataset.code = code;
+          span.innerHTML = `${code}<span class="n">${CATALOG[code]}</span>`;
+          parts.push(span);
+          last = match.index + code.length;
+        }
+        if (!hit) continue;
+        if (last < text.length) parts.push(document.createTextNode(text.slice(last)));
+        const parent = textNode.parentNode;
+        const frag = document.createDocumentFragment();
+        parts.forEach(p => frag.appendChild(p));
+        const lastPart = parts[parts.length - 1];
+        parent.replaceChild(frag, textNode);
+        if (lastPart) placeCaretAfter(lastPart);
+        changed = true;
+        break; // 一次处理一处，避免选区错乱；下次 input 继续
+      }
+      if (changed) refreshAutoSummary();
+    }
+
+    editor.addEventListener('input', () => {
+      saveSelection();
+      clearTimeout(tagifyTimer);
+      tagifyTimer = setTimeout(tagifyCodes, 280);
+    });
+    editor.addEventListener('keyup', saveSelection);
+    editor.addEventListener('mouseup', saveSelection);
+    editor.addEventListener('touchend', saveSelection);
+
+    // 双击已标签代码可还原为纯文本（方便改错）
+    editor.addEventListener('dblclick', (e) => {
+      const tag = e.target.closest('.stock-inline');
+      if (!tag) return;
+      const text = document.createTextNode(tag.dataset.code);
+      tag.replaceWith(text);
+      placeCaretAfter(text);
+      refreshAutoSummary();
+    });
+
+    function insertAtCaret(node) {
+      editor.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      if (savedRange) sel.addRange(savedRange);
+      else {
+        const r = document.createRange();
+        r.selectNodeContents(editor);
+        r.collapse(false);
+        sel.addRange(r);
+      }
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(node);
+      const after = document.createElement('p');
+      after.innerHTML = '<br>';
+      node.after(after);
+      const r = document.createRange();
+      r.setStart(after, 0);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      savedRange = r.cloneRange();
+    }
+
+    document.getElementById('btnList').addEventListener('mousedown', (e) => e.preventDefault());
+    document.getElementById('btnImg').addEventListener('mousedown', (e) => e.preventDefault());
+    document.getElementById('btnList').onclick = () => {
+      editor.focus();
+      if (savedRange) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+      }
+      document.execCommand('insertUnorderedList');
+      saveSelection();
+    };
+    document.getElementById('btnImg').onclick = () => {
+      const block = document.createElement('div');
+      block.className = 'mock-img';
+      block.contentEditable = 'false';
+      block.textContent = '📊 插在光标处的图片';
+      insertAtCaret(block);
+    };
+
+    refreshAutoSummary();
+  </script>
+</body>
+</html>
