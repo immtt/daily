@@ -83,10 +83,159 @@
     .auto-stocks .stock {
       margin: 2px 4px 2px 0;
     }
+
+    /* 大盘概况：自动读取指数 */
+    .market-card {
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .market-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border: none;
+      background: var(--bg);
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+    }
+    .market-toggle .chev {
+      font-size: 11px;
+      color: var(--muted);
+      transition: transform .2s;
+      flex-shrink: 0;
+      width: 12px;
+    }
+    .market-card:not(.collapsed) .chev { transform: rotate(90deg); }
+    .market-toggle strong {
+      font-size: 13px;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+    .market-toggle .hint {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .market-toggle .summary {
+      flex: 1;
+      font-size: 12px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .market-toggle .date {
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .market-card.collapsed .market-body { display: none; }
+    .market-card.collapsed .summary { display: block; }
+    .market-card:not(.collapsed) .summary { display: none; }
+    .market-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--line);
+    }
+    .market-item {
+      background: var(--surface);
+      padding: 12px 14px;
+    }
+    .market-item .name {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .market-item .point {
+      font-size: 17px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+    .market-item .chg {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .market-item .chg.up { color: var(--up); }
+    .market-item .chg.down { color: var(--down); }
+    .market-item .chg.flat { color: var(--muted); }
+
+    .market-extra {
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .breadth {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .breadth .lbl {
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+      width: 16px;
+    }
+    .breadth .lbl.down { color: var(--down); }
+    .breadth .lbl.up { color: var(--up); }
+    .breadth .bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      background: var(--bg-deep);
+    }
+    .breadth .bar .seg-down { background: var(--down); }
+    .breadth .bar .seg-up { background: var(--up); }
+    .breadth .nums {
+      font-size: 11px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      flex-shrink: 0;
+      min-width: 72px;
+      text-align: center;
+    }
+    .market-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .stat-box {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .stat-box .k {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .stat-box .v {
+      font-size: 15px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-box .v.up { color: var(--up); }
+    .stat-box .v.down { color: var(--down); }
   </style>
 </head>
 <body class="mobile-live">
-  <div class="proto-banner">正文输入代码即自动标签化 · 无需手动选股 · <a href="index.html">导航</a></div>
+  <div class="proto-banner">收盘前写当天笔记 → 盘中快照 · 可加 <code>?demo=intraday</code> 预览 · <a href="index.html">导航</a></div>
 
   <div class="device-stage">
     <div class="phone">
@@ -104,12 +253,28 @@
         <div class="app-scroll">
           <div class="edit-pad">
             <div class="field">
-              <input class="input title-field" type="text" value="今日复盘：半导体板块强势" placeholder="输入标题（自动加粗）">
+              <input class="input title-field" type="text" value="" placeholder="输入标题（自动加粗）">
             </div>
 
             <div class="field">
               <label>复盘日期</label>
-              <input class="input" type="date" value="2026-07-23">
+              <input class="input" type="date" id="entryDate" value="2026-07-23">
+            </div>
+
+            <div class="field">
+              <div class="market-card collapsed" id="marketCard">
+                <button type="button" class="market-toggle" id="marketToggle" aria-expanded="false">
+                  <span class="chev">▶</span>
+                  <strong>大盘概况</strong>
+                  <span class="hint">自动</span>
+                  <span class="summary" id="marketSummary">加载中…</span>
+                  <span class="date" id="marketDateLabel">2026-07-23</span>
+                </button>
+                <div class="market-body">
+                  <div class="market-grid" id="marketGrid"></div>
+                  <div class="market-extra" id="marketExtra"></div>
+                </div>
+              </div>
             </div>
 
             <div class="grid-2">
@@ -154,7 +319,6 @@
                 <button type="button" id="btnImg" title="在正文插入图片">🖼 插图</button>
               </div>
               <div class="editor-body" id="editor" contenteditable="true">
-                <p><strong>大盘概况</strong>：今日沪指涨 0.8%，半导体板块领涨，成交额放大至 1.2 万亿。</p>
                 <p><strong>操作回顾</strong>：</p>
                 <ul>
                   <li><span class="stock-inline" contenteditable="false" data-code="600519">600519<span class="n">贵州茅台</span></span> 突破前高后加仓 100 股，成本 1680</li>
@@ -194,6 +358,132 @@
         btn.classList.add('on');
       };
     });
+
+    // 大盘概况：盘中快照 vs 收盘（原型模拟）
+    const MOCK_CLOSE = {
+      '2026-07-23': [
+        { id: 'sh000001', name: '上证指数', point: 3456.78, change: 0.80, changeAmt: 27.45 },
+        { id: 'sz399001', name: '深证成指', point: 11234.56, change: 1.12, changeAmt: 124.30 },
+        { id: 'sz399006', name: '创业板指', point: 2345.67, change: -0.35, changeAmt: -8.21 },
+        { id: 'sh000688', name: '科创50', point: 987.65, change: 0.52, changeAmt: 5.10 }
+      ],
+      '2026-07-22': [
+        { id: 'sh000001', name: '上证指数', point: 3429.33, change: -0.42, changeAmt: -14.50 },
+        { id: 'sz399001', name: '深证成指', point: 11110.26, change: -0.28, changeAmt: -31.20 },
+        { id: 'sz399006', name: '创业板指', point: 2353.88, change: 0.15, changeAmt: 3.52 },
+        { id: 'sh000688', name: '科创50', point: 982.55, change: -0.88, changeAmt: -8.72 }
+      ]
+    };
+    // 盘中：点位略低于收盘演示值
+    const MOCK_INTRADAY = {
+      '2026-07-23': [
+        { id: 'sh000001', name: '上证指数', point: 3448.12, change: 0.55, changeAmt: 18.79 },
+        { id: 'sz399001', name: '深证成指', point: 11208.40, change: 0.89, changeAmt: 98.14 },
+        { id: 'sz399006', name: '创业板指', point: 2341.20, change: -0.54, changeAmt: -12.68 },
+        { id: 'sh000688', name: '科创50', point: 984.30, change: 0.31, changeAmt: 3.05 }
+      ]
+    };
+
+    const MOCK_STATS_CLOSE = {
+      '2026-07-23': { rise: 2489, fall: 2780, turnover: 22094, capitalInflow: -233.01 },
+      '2026-07-22': { rise: 986, fall: 4120, turnover: 18502, capitalInflow: -458.60 }
+    };
+    const MOCK_STATS_INTRADAY = {
+      '2026-07-23': { rise: 2105, fall: 3012, turnover: 16880, capitalInflow: -189.45 }
+    };
+
+    const entryDate = document.getElementById('entryDate');
+    const marketGrid = document.getElementById('marketGrid');
+    const marketExtra = document.getElementById('marketExtra');
+    const marketDateLabel = document.getElementById('marketDateLabel');
+
+    const marketCard = document.getElementById('marketCard');
+    const marketToggle = document.getElementById('marketToggle');
+    const marketSummary = document.getElementById('marketSummary');
+
+    marketToggle.addEventListener('click', () => {
+      const collapsed = marketCard.classList.toggle('collapsed');
+      marketToggle.setAttribute('aria-expanded', String(!collapsed));
+    });
+
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    /** A 股 15:00 收盘前视为盘中 */
+    function isBeforeMarketClose() {
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      return mins < 15 * 60;
+    }
+
+    const forceIntradayDemo = new URLSearchParams(location.search).get('demo') === 'intraday';
+
+    function isIntradaySnapshot(dateStr) {
+      if (forceIntradayDemo && dateStr === '2026-07-23') return true;
+      return dateStr === todayStr() && isBeforeMarketClose();
+    }
+
+    function renderMarket(dateStr) {
+      const intraday = isIntradaySnapshot(dateStr);
+      const data = intraday
+        ? (MOCK_INTRADAY[dateStr] || MOCK_CLOSE[dateStr] || MOCK_CLOSE['2026-07-23'])
+        : (MOCK_CLOSE[dateStr] || MOCK_CLOSE['2026-07-23']);
+      const stats = intraday
+        ? (MOCK_STATS_INTRADAY[dateStr] || MOCK_STATS_CLOSE[dateStr] || MOCK_STATS_CLOSE['2026-07-23'])
+        : (MOCK_STATS_CLOSE[dateStr] || MOCK_STATS_CLOSE['2026-07-23']);
+
+      marketDateLabel.textContent = intraday
+        ? `${dateStr} 盘中`
+        : `${dateStr} 收盘`;
+
+      const sh = data[0];
+      const flowSign = stats.capitalInflow >= 0 ? '+' : '';
+      marketSummary.textContent =
+        `上证${sh.change >= 0 ? '+' : ''}${sh.change.toFixed(2)}% · ${stats.fall}跌:${stats.rise}涨 · 资金${flowSign}${stats.capitalInflow.toFixed(0)}亿`;
+
+      marketGrid.innerHTML = data.map(idx => {
+        const dir = idx.change > 0 ? 'up' : idx.change < 0 ? 'down' : 'flat';
+        const sign = idx.change > 0 ? '+' : '';
+        const arrow = idx.change > 0 ? '▲' : idx.change < 0 ? '▼' : '—';
+        return `<div class="market-item">
+          <div class="name">${idx.name}</div>
+          <div class="point">${idx.point.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</div>
+          <div class="chg ${dir}">${arrow} ${sign}${idx.changeAmt.toFixed(2)} (${sign}${idx.change.toFixed(2)}%)</div>
+        </div>`;
+      }).join('');
+
+      const total = stats.rise + stats.fall;
+      const fallPct = total ? (stats.fall / total * 100).toFixed(1) : 50;
+      const risePct = total ? (100 - fallPct).toFixed(1) : 50;
+      const flowSign = stats.capitalInflow >= 0 ? '+' : '';
+      const flowCls = stats.capitalInflow >= 0 ? 'up' : 'down';
+
+      marketExtra.innerHTML = `
+        <div class="breadth">
+          <span class="lbl down">跌</span>
+          <div class="bar">
+            <div class="seg-down" style="width:${fallPct}%"></div>
+            <div class="seg-up" style="width:${risePct}%"></div>
+          </div>
+          <span class="lbl up">涨</span>
+        </div>
+        <div class="nums" style="margin:-4px 0 10px;text-align:center">${stats.fall.toLocaleString()} : ${stats.rise.toLocaleString()}</div>
+        <div class="market-stats">
+          <div class="stat-box">
+            <div class="k">成交额</div>
+            <div class="v">${stats.turnover.toLocaleString()} 亿</div>
+          </div>
+          <div class="stat-box">
+            <div class="k">大盘资金净流入</div>
+            <div class="v ${flowCls}">${flowSign}${stats.capitalInflow.toFixed(2)} 亿</div>
+          </div>
+        </div>`;
+    }
+
+    entryDate.addEventListener('change', () => renderMarket(entryDate.value));
+    renderMarket(entryDate.value);
 
     const editor = document.getElementById('editor');
     const autoStocks = document.getElementById('autoStocks');

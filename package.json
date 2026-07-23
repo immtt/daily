@@ -1,0 +1,19 @@
+{
+  "name": "stock-diary",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "devDependencies": {
+    "tsx": "^4.23.1"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @stock-diary/api",
+    "dev:web": "npm run dev -w @stock-diary/web",
+    "dev:db": "node scripts/dev-db.mjs",
+    "build": "npm run build -w @stock-diary/api && npm run build -w @stock-diary/web",
+    "db:migrate": "npm run db:migrate -w @stock-diary/api",
+    "db:seed": "npm run db:seed -w @stock-diary/api"
+  }
+}

@@ -5,6 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>日记详情 — 复盘日记</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .market-card {
+      margin: 0 16px 16px;
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .market-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border: none;
+      background: var(--bg);
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+    }
+    .market-toggle .chev { font-size: 11px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+    .market-card:not(.collapsed) .chev { transform: rotate(90deg); }
+    .market-toggle strong { font-size: 13px; }
+    .market-toggle .summary { flex: 1; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .market-toggle .date { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+    .market-card.collapsed .market-body { display: none; }
+    .market-card.collapsed .summary { display: block; }
+    .market-card:not(.collapsed) .summary { display: none; }
+    .market-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--line);
+    }
+    .market-item { background: var(--surface); padding: 12px 14px; }
+    .market-item .name { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+    .market-item .point { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .market-item .chg { margin-top: 4px; font-size: 12px; font-weight: 700; }
+    .market-item .chg.up { color: var(--up); }
+    .market-item .chg.down { color: var(--down); }
+    .market-extra { padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+    .breadth { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .breadth .lbl { font-size: 12px; font-weight: 700; width: 16px; }
+    .breadth .lbl.down { color: var(--down); }
+    .breadth .lbl.up { color: var(--up); }
+    .breadth .bar { flex: 1; height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--bg-deep); }
+    .breadth .seg-down { background: var(--down); }
+    .breadth .seg-up { background: var(--up); }
+    .breadth-nums { text-align: center; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+    .market-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+    .stat-box .k { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+    .stat-box .v { font-size: 15px; font-weight: 700; }
+    .stat-box .v.up { color: var(--up); }
+    .stat-box .v.down { color: var(--down); }
+  </style>
 </head>
 <body class="mobile-live">
   <div class="proto-banner">详情 · 情绪用表情展示 · <a href="index.html">导航</a></div>
@@ -24,7 +80,7 @@
 
         <div class="app-scroll">
           <div class="detail-hero">
-            <h1>今日复盘：半导体板块强势</h1>
+            <h1>半导体板块强势</h1>
             <div class="entry-row">
               <span>📅 2026-07-23</span>
               <span>·</span>
@@ -57,9 +113,58 @@
             </div>
           </div>
 
+          <div class="market-card collapsed" id="marketCard">
+            <button type="button" class="market-toggle" id="marketToggle" aria-expanded="false">
+              <span class="chev">▶</span>
+              <strong>大盘概况</strong>
+              <span class="summary">上证+0.80% · 2780跌:2489涨 · 资金-233亿</span>
+              <span class="date">2026-07-23 收盘</span>
+            </button>
+            <div class="market-body">
+            <div class="market-grid">
+              <div class="market-item">
+                <div class="name">上证指数</div>
+                <div class="point">3,456.78</div>
+                <div class="chg up">▲ +27.45 (+0.80%)</div>
+              </div>
+              <div class="market-item">
+                <div class="name">深证成指</div>
+                <div class="point">11,234.56</div>
+                <div class="chg up">▲ +124.30 (+1.12%)</div>
+              </div>
+              <div class="market-item">
+                <div class="name">创业板指</div>
+                <div class="point">2,345.67</div>
+                <div class="chg down">▼ -8.21 (-0.35%)</div>
+              </div>
+              <div class="market-item">
+                <div class="name">科创50</div>
+                <div class="point">987.65</div>
+                <div class="chg up">▲ +5.10 (+0.52%)</div>
+              </div>
+            </div>
+            <div class="market-extra">
+              <div class="breadth">
+                <span class="lbl down">跌</span>
+                <div class="bar"><div class="seg-down" style="width:52.8%"></div><div class="seg-up" style="width:47.2%"></div></div>
+                <span class="lbl up">涨</span>
+              </div>
+              <div class="breadth-nums">2,780 : 2,489</div>
+              <div class="market-stats">
+                <div class="stat-box">
+                  <div class="k">成交额</div>
+                  <div class="v">22,094 亿</div>
+                </div>
+                <div class="stat-box">
+                  <div class="k">大盘资金净流入</div>
+                  <div class="v down">-233.01 亿</div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+
           <div class="detail-body">
-            <h3>大盘概况</h3>
-            <p>今日沪指涨 0.8%，半导体板块领涨，成交额放大至 1.2 万亿。</p>
             <h3>操作回顾</h3>
             <ul style="padding-left:20px">
               <li>600519 突破前高后加仓 100 股，成本 1680</li>
@@ -78,5 +183,14 @@
       </div>
     </div>
   </div>
+
+  <script>
+    document.getElementById('marketToggle').addEventListener('click', () => {
+      const card = document.getElementById('marketCard');
+      const btn = document.getElementById('marketToggle');
+      const collapsed = card.classList.toggle('collapsed');
+      btn.setAttribute('aria-expanded', String(!collapsed));
+    });
+  </script>
 </body>
 </html>

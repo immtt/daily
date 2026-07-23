@@ -26,14 +26,14 @@
           <!-- 可切换错误态：取消注释下一行 -->
           <!-- <div class="alert alert-error">账号待审核，请等待管理员通过</div> -->
 
-          <form onsubmit="event.preventDefault(); location.href='mobile-diary-list.html'">
+          <form id="loginForm">
             <div class="field">
               <label>用户名</label>
-              <input class="input" type="text" placeholder="请输入用户名" value="demo" autocomplete="username">
+              <input class="input" id="username" type="text" placeholder="请输入用户名" value="" autocomplete="username">
             </div>
             <div class="field">
               <label>密码</label>
-              <input class="input" type="password" placeholder="请输入密码" value="••••••••" autocomplete="current-password">
+              <input class="input" id="password" type="password" placeholder="请输入密码" value="" autocomplete="current-password">
             </div>
             <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px">登录</button>
           </form>
@@ -45,5 +45,14 @@
       </div>
     </div>
   </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const u = document.getElementById('username').value.trim();
+      // 原型：admin 登录后进入首页，底部可见「管理」Tab
+      location.href = 'mobile-diary-list.html';
+    });
+  </script>
 </body>
 </html>

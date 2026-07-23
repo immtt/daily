@@ -19,7 +19,7 @@
         <header class="app-header">
           <a href="mobile-diary-list.html" class="header-btn">←</a>
           <div class="title">用户审核</div>
-          <span style="font-size:12px;color:var(--muted);font-weight:600">admin</span>
+          <a href="login.html" class="btn btn-ghost btn-sm" style="font-size:13px">退出</a>
         </header>
 
         <div class="app-scroll">
@@ -57,8 +57,10 @@
 
           <div style="margin:20px 16px;padding:16px;background:var(--brand-soft);border-radius:14px;font-size:13px;color:var(--brand-deep);line-height:1.7">
             <strong>管理员说明</strong><br>
-            默认账号 <code>admin</code> / <code>ChangeMe_Admin_2026</code><br>
-            新用户注册后为「待审核」，通过后方可登录。
+            · 与普通用户<strong>同一登录页</strong>，用 <code>admin</code> 登录<br>
+            · 登录后底部 Tab 多一项「管理」（仅 admin 可见）<br>
+            · 右上角「退出」清除登录态，回到登录页<br>
+            · 默认密码 <code>ChangeMe_Admin_2026</code>，部署后请修改
           </div>
         </div>
 
