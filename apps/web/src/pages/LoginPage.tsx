@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { UserMenu } from "../components/UserMenu";
 
 export function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -26,8 +27,11 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
+      <div className="auth-page-corner">
+        <UserMenu />
+      </div>
       <div className="auth-card">
-        <h1 className="brand">复盘日记</h1>
+        <h1 className="brand">增长日记</h1>
         <p className="auth-sub">记录每一次市场思考</p>
         <form onSubmit={onSubmit} className="auth-form">
           <label>

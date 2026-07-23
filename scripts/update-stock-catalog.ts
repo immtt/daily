@@ -1,28 +1,24 @@
 /**
- * 增量更新 stock_catalog。
- * 默认合并本地种子列表；后续可替换为外部 CSV/JSON 导入。
+ * 从东方财富生产接口同步 A 股代码库到 stock_catalog。
+ * 用法：cd apps/api && npm run update-stocks
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { readFileSync, existsSync } from "node:fs";
-import path from "node:path";
+import { fetchAllAShareCatalog } from "../apps/api/src/services/eastmoney.js";
 
 const prisma = new PrismaClient();
 
-type Row = { code: string; name: string; market: string };
-
 async function main() {
-  const extraPath = path.resolve(
-    process.cwd(),
-    "../../data/stock-catalog.json"
-  );
-  let rows: Row[] = [];
-  if (existsSync(extraPath)) {
-    rows = JSON.parse(readFileSync(extraPath, "utf8")) as Row[];
-  } else {
-    console.log("No data/stock-catalog.json — seeding defaults via prisma seed");
-    console.log("Create data/stock-catalog.json to bulk-update.");
-    process.exit(0);
+  const existing = await prisma.stockCatalog.count();
+  if (process.argv.includes("--if-empty") && existing > 100) {
+    console.log(`stock_catalog already has ${existing} rows — skip`);
+    return;
+  }
+
+  console.log("Fetching A-share list from East Money…");
+  const rows = await fetchAllAShareCatalog();
+  if (rows.length === 0) {
+    throw new Error("East Money returned 0 stocks — check network");
   }
 
   let n = 0;
@@ -33,8 +29,9 @@ async function main() {
       create: s,
     });
     n++;
+    if (n % 500 === 0) console.log(`  ${n}/${rows.length}…`);
   }
-  console.log(`Updated ${n} stocks`);
+  console.log(`Synced ${n} stocks to stock_catalog`);
 }
 
 main()

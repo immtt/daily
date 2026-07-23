@@ -11,9 +11,12 @@
   "scripts": {
     "dev:api": "npm run dev -w @stock-diary/api",
     "dev:web": "npm run dev -w @stock-diary/web",
-    "dev:db": "node scripts/dev-db.mjs",
     "build": "npm run build -w @stock-diary/api && npm run build -w @stock-diary/web",
+    "db:push": "npm run db:push -w @stock-diary/api",
     "db:migrate": "npm run db:migrate -w @stock-diary/api",
-    "db:seed": "npm run db:seed -w @stock-diary/api"
+    "db:seed": "npm run db:seed -w @stock-diary/api",
+    "update-stocks": "npm run update-stocks -w @stock-diary/api",
+    "reset-password": "node scripts/reset-password.mjs",
+    "restart:dev": "bash scripts/restart-dev.sh"
   }
 }

@@ -14,6 +14,7 @@ import { stockRoutes } from "./routes/stocks.js";
 import { uploadRoutes } from "./routes/uploads.js";
 import { adminRoutes } from "./routes/admin.js";
 import { prisma } from "./lib/prisma.js";
+import { purgeExpiredTrash } from "./services/trash.js";
 import bcrypt from "bcryptjs";
 
 async function ensureAdmin() {
@@ -69,6 +70,13 @@ async function main() {
   );
 
   await ensureAdmin();
+  await purgeExpiredTrash();
+  setInterval(
+    () => {
+      void purgeExpiredTrash();
+    },
+    24 * 60 * 60 * 1000
+  );
 
   const port = Number(process.env.API_PORT || 3000);
   await app.listen({ port, host: "0.0.0.0" });

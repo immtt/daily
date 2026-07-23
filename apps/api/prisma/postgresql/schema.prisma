@@ -1,0 +1,95 @@
+// 生产 / Docker 部署：PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+enum UserStatus {
+  pending
+  active
+  rejected
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  username     String     @unique @db.VarChar(50)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  role         UserRole   @default(user)
+  status       UserStatus @default(pending)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  entries      DiaryEntry[]
+
+  @@map("users")
+}
+
+model StockCatalog {
+  code      String   @id @db.VarChar(16)
+  name      String   @db.VarChar(64)
+  market    String   @db.VarChar(8)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([name], map: "idx_stock_catalog_name")
+  @@map("stock_catalog")
+}
+
+model DiaryEntry {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  title          String    @db.VarChar(200)
+  entryDate      DateTime  @map("entry_date") @db.Date
+  pnlDay         Decimal?  @map("pnl_day") @db.Decimal(12, 2)
+  pnlTotal       Decimal?  @map("pnl_total") @db.Decimal(12, 2)
+  mood           String?   @db.VarChar(20)
+  marketSnapshot Json?     @map("market_snapshot")
+  content        Json
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stocks         DiaryStock[]
+
+  @@index([userId, entryDate(sort: Desc)], map: "idx_diary_entries_user_date")
+  @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
+  @@map("diary_entries")
+}
+
+model DiaryStock {
+  id      String     @id @default(uuid()) @db.Uuid
+  entryId String     @map("entry_id") @db.Uuid
+  code    String     @db.VarChar(16)
+  name    String     @db.VarChar(64)
+  entry   DiaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId], map: "idx_diary_stocks_entry")
+  @@index([code], map: "idx_diary_stocks_code")
+  @@map("diary_stocks")
+}
+
+/// 大盘每日收盘快照（仅完整收盘可入库；盘中数据不入库）
+model MarketDailySnapshot {
+  tradeDate     String   @id @map("trade_date") @db.VarChar(10)
+  snapshotKind  String   @map("snapshot_kind") @db.VarChar(16)
+  isComplete    Boolean  @default(false) @map("is_complete")
+  indices       Json
+  breadthRise   Int      @map("breadth_rise")
+  breadthFall   Int      @map("breadth_fall")
+  turnover      Decimal  @db.Decimal(14, 2)
+  capitalInflow Decimal  @map("capital_inflow") @db.Decimal(14, 2)
+  source        String?  @db.VarChar(32)
+  capturedAt    DateTime @map("captured_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tradeDate(sort: Desc), isComplete], map: "idx_market_snapshots_date_complete")
+  @@map("market_daily_snapshots")
+}

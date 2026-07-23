@@ -11,6 +11,7 @@ export type MarketSnapshot = {
   date: string;
   tradeDate?: string;
   snapshotType: "intraday" | "close";
+  snapshotComplete?: boolean;
   snapshotAt: string;
   indices: Array<{
     id: string;
@@ -24,6 +25,11 @@ export type MarketSnapshot = {
   capitalInflow: number;
   available: boolean;
   message?: string;
+  prevTradeDate?: string | null;
+  prevTurnover?: number | null;
+  turnoverVsPrev?: "up" | "down" | "flat" | null;
+  turnoverChangeAmt?: number | null;
+  turnoverChangePct?: number | null;
 };
 
 export type DiaryEntry = {
@@ -38,6 +44,8 @@ export type DiaryEntry = {
   content?: unknown;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
+  purgeAt?: string;
 };
 
 type ApiError = { error?: string; code?: string };
@@ -58,16 +66,39 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
+  const hasBody =
+    options.body !== undefined &&
+    options.body !== null &&
+    options.body !== "";
+  if (
+    hasBody &&
+    !(options.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`/api${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, { ...options, headers, cache: "no-store" });
+  } catch {
+    throw new Error("网络错误，请确认 API 已启动");
+  }
+
   if (res.status === 204) return undefined as T;
 
-  const data = (await res.json().catch(() => ({}))) as T & ApiError;
+  const raw = await res.text();
+  let data: (T & ApiError) | null = null;
+  if (raw) {
+    try {
+      data = JSON.parse(raw) as T & ApiError;
+    } catch {
+      data = null;
+    }
+  }
+
   if (!res.ok) {
     if (res.status === 401) {
       setToken(null);
@@ -75,9 +106,14 @@ async function request<T>(
         location.href = "/login";
       }
     }
-    throw new Error(data.error || `请求失败 (${res.status})`);
+    if (res.status >= 500 && !data?.error) {
+      throw new Error(
+        "后端未就绪（API 未启动）。请在终端执行：cd ~/笔记 && npm run restart:dev"
+      );
+    }
+    throw new Error(data?.error || `请求失败 (${res.status})`);
   }
-  return data;
+  return (data ?? (undefined as T)) as T;
 }
 
 export const api = {
@@ -110,13 +146,39 @@ export const api = {
       body: JSON.stringify(body),
     }),
   deleteEntry: (id: string) =>
-    request<void>(`/entries/${id}`, { method: "DELETE" }),
+    request<{ ok: boolean; deletedAt?: string; purgeAt?: string }>(
+      `/entries/${id}`,
+      { method: "DELETE" }
+    ),
+  listTrash: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v)
+    ).toString();
+    return request<{
+      items: DiaryEntry[];
+      total: number;
+      page: number;
+      pageSize: number;
+      retentionDays: number;
+    }>(`/entries/trash?${qs}`);
+  },
+  getTrashEntry: (id: string) =>
+    request<DiaryEntry>(`/entries/trash/${id}`),
+  restoreEntry: (id: string) =>
+    request<DiaryEntry>(`/entries/trash/${id}/restore`, { method: "POST" }),
+  purgeEntry: (id: string) =>
+    request<{ ok: boolean }>(`/entries/trash/${id}`, { method: "DELETE" }),
   market: (date: string) =>
     request<MarketSnapshot>(`/market/indices?date=${date}`),
   lookupStocks: (codes: string[]) =>
     request<{ items: StockRef[] }>(
       `/stocks/lookup?codes=${codes.join(",")}`
     ),
+  resolveStocksInText: (text: string) =>
+    request<{ items: StockRef[] }>("/stocks/resolve-text", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
   upload: async (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

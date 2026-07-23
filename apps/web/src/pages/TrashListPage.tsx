@@ -5,31 +5,33 @@ import { formatPnl, formatStockTag, moodEmoji, pnlClass } from "../lib/format";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 
-export function DiaryListPage() {
+function formatPurgeAt(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+  });
+}
+
+export function TrashListPage() {
   const location = useLocation();
   const [items, setItems] = useState<DiaryEntry[]>([]);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [stockCode, setStockCode] = useState("");
+  const [retentionDays, setRetentionDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load() {
+  useEffect(() => {
     setLoading(true);
     setError("");
-    try {
-      const res = await api.listEntries({ from, to, stockCode });
-      setItems(res.items);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    api
+      .listTrash()
+      .then((res) => {
+        setItems(res.items);
+        setRetentionDays(res.retentionDays);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "加载失败"))
+      .finally(() => setLoading(false));
   }, [location.key]);
 
   return (
@@ -42,49 +44,41 @@ export function DiaryListPage() {
         }
       />
 
-      <HomeTabNav active="diary" />
+      <HomeTabNav active="trash" />
 
       <main className="app-main">
-        <section className="filter-bar">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          <span className="muted">至</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          <input
-            placeholder="股票代码或名称"
-            value={stockCode}
-            onChange={(e) => setStockCode(e.target.value.trim())}
-          />
-          <button type="button" className="btn-secondary" onClick={() => void load()}>
-            筛选
-          </button>
-        </section>
+        <p className="trash-hint muted">
+          删除的复盘保留 {retentionDays} 天，到期自动清除。可恢复或彻底删除。
+        </p>
 
         {error && <p className="form-error">{error}</p>}
         {loading ? (
           <p className="muted center">加载中…</p>
         ) : items.length === 0 ? (
-          <p className="muted center empty">还没有复盘，点右下角 + 开始</p>
+          <p className="muted center empty">废纸篓是空的</p>
         ) : (
           <ul className="entry-list">
             {items.map((e) => (
               <li key={e.id}>
-                <Link to={`/entries/${e.id}`} className="entry-card">
+                <Link to={`/trash/${e.id}`} className="entry-card trash-card">
                   <div className="entry-top">
                     <time>{e.entryDate}</time>
-                    <span>{moodEmoji(e.mood)}</span>
+                    <span className="muted tiny">
+                      {e.purgeAt
+                        ? `${formatPurgeAt(e.purgeAt)} 清除`
+                        : ""}
+                    </span>
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
                   <div className="entry-meta">
                     <span className={pnlClass(e.pnlDay)}>
                       当日 {formatPnl(e.pnlDay)}
                     </span>
-                    <span className={pnlClass(e.pnlTotal)}>
-                      累计 {formatPnl(e.pnlTotal)}
-                    </span>
+                    <span>{moodEmoji(e.mood)}</span>
                   </div>
                   {e.stocks.length > 0 && (
                     <div className="stock-tags">
-                      {e.stocks.slice(0, 4).map((s) => (
+                      {e.stocks.slice(0, 3).map((s) => (
                         <span key={s.code} className="stock-tag">
                           {formatStockTag(s)}
                         </span>
@@ -97,10 +91,6 @@ export function DiaryListPage() {
           </ul>
         )}
       </main>
-
-      <Link to="/entries/new" className="fab-write" aria-label="写复盘">
-        +
-      </Link>
     </div>
   );
 }

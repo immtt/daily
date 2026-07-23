@@ -5,6 +5,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { DiaryListPage } from "./pages/DiaryListPage";
 import { DiaryDetailPage } from "./pages/DiaryDetailPage";
 import { DiaryEditPage } from "./pages/DiaryEditPage";
+import { TrashListPage } from "./pages/TrashListPage";
+import { TrashDetailPage } from "./pages/TrashDetailPage";
 
 function Private({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -46,6 +48,22 @@ export function App() {
         element={
           <Private>
             <DiaryDetailPage />
+          </Private>
+        }
+      />
+      <Route
+        path="/trash"
+        element={
+          <Private>
+            <TrashListPage />
+          </Private>
+        }
+      />
+      <Route
+        path="/trash/:id"
+        element={
+          <Private>
+            <TrashDetailPage />
           </Private>
         }
       />

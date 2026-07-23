@@ -10,6 +10,12 @@ export function moodEmoji(id: string | null | undefined) {
   return MOODS.find((m) => m.id === id)?.emoji ?? "";
 }
 
+/** 股票标签：无名称或与代码相同时只显示代码 */
+export function formatStockTag(s: { code: string; name: string }) {
+  const name = s.name?.trim();
+  return name && name !== s.code ? `${s.code} ${name}` : s.code;
+}
+
 export function formatPnl(n: number | null | undefined) {
   if (n == null || Number.isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";

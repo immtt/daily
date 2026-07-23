@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type DiaryEntry, type MarketSnapshot } from "../api/client";
 import { DiaryEditor, extractCodesFromContent } from "../components/DiaryEditor";
 import { MarketCard } from "../components/MarketCard";
+import { AppHeader } from "../components/AppHeader";
 import { MOODS, todayStr } from "../lib/format";
 
 export function DiaryEditPage() {
@@ -96,13 +97,14 @@ export function DiaryEditPage() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <Link to={isNew ? "/" : `/entries/${id}`} className="btn-ghost">
-          ← 返回
-        </Link>
-        <div className="brand-sm">{isNew ? "写复盘" : "编辑"}</div>
-        <span />
-      </header>
+      <AppHeader
+        left={
+          <Link to={isNew ? "/" : `/entries/${id}`} className="btn-ghost">
+            ← 返回
+          </Link>
+        }
+        center={<div className="brand-sm">{isNew ? "写复盘" : "编辑"}</div>}
+      />
 
       <main className="app-main edit">
         <label className="field">

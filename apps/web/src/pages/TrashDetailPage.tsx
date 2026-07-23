@@ -9,23 +9,33 @@ import {
 import { formatPnl, formatStockTag, moodEmoji, pnlClass } from "../lib/format";
 import { generateHTML } from "../lib/tiptapHtml";
 
-export function DiaryDetailPage() {
+function formatDateTime(iso?: string) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function TrashDetailPage() {
   const { id } = useParams();
   const [entry, setEntry] = useState<DiaryEntry | null>(null);
   const [resolvedStocks, setResolvedStocks] = useState<
     Array<{ code: string; name: string }>
   >([]);
   const [error, setError] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirmPurge, setConfirmPurge] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    setConfirmDelete(false);
-    setDeleteError("");
+    setConfirmPurge(false);
+    setActionError("");
     api
-      .getEntry(id)
+      .getTrashEntry(id)
       .then(setEntry)
       .catch((e) => setError(e instanceof Error ? e.message : "加载失败"));
   }, [id]);
@@ -59,38 +69,43 @@ export function DiaryDetailPage() {
     return generateHTML(enrichContentStocks(entry.content, resolvedStocks));
   }, [entry, resolvedStocks]);
 
-  async function onDelete() {
-    const entryId = entry?.id || id;
-    if (!entryId) return;
-    if (!confirmDelete) {
-      setDeleteError("");
-      setConfirmDelete(true);
-      return;
-    }
-    setDeleting(true);
-    setDeleteError("");
+  async function onRestore() {
+    if (!id) return;
+    setBusy(true);
+    setActionError("");
     try {
-      await api.deleteEntry(entryId);
-      window.location.replace("/");
+      await api.restoreEntry(id);
+      window.location.replace(`/entries/${id}`);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "删除失败";
-      setDeleteError(msg);
-      setDeleting(false);
-      // 保持 confirmDelete=true，便于重试
+      setActionError(e instanceof Error ? e.message : "恢复失败");
+      setBusy(false);
     }
   }
 
-  function cancelDelete() {
-    setConfirmDelete(false);
-    setDeleteError("");
+  async function onPurge() {
+    if (!id) return;
+    if (!confirmPurge) {
+      setConfirmPurge(true);
+      return;
+    }
+    setBusy(true);
+    setActionError("");
+    try {
+      await api.purgeEntry(id);
+      window.location.replace("/trash");
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "删除失败");
+      setBusy(false);
+      setConfirmPurge(false);
+    }
   }
 
   if (error) {
     return (
       <div className="app-shell">
         <p className="form-error center">{error}</p>
-        <Link to="/" className="btn-secondary">
-          返回
+        <Link to="/trash" className="btn-secondary">
+          返回废纸篓
         </Link>
       </div>
     );
@@ -108,14 +123,18 @@ export function DiaryDetailPage() {
     <div className="app-shell">
       <AppHeader
         left={
-          <Link to="/" className="btn-ghost">
-            ← 返回
+          <Link to="/trash" className="btn-ghost">
+            ← 废纸篓
           </Link>
         }
-        center={<div className="brand-sm">详情</div>}
+        center={<div className="brand-sm">已删除</div>}
       />
 
       <main className="app-main detail">
+        <p className="trash-meta muted">
+          删除于 {formatDateTime(entry.deletedAt)} · 将于{" "}
+          {formatDateTime(entry.purgeAt)} 自动清除
+        </p>
         <time className="muted">{entry.entryDate}</time>
         <h1 className="entry-title lg">
           {entry.title} {moodEmoji(entry.mood)}
@@ -143,47 +162,47 @@ export function DiaryDetailPage() {
           </div>
         )}
 
-        <article
-          className="prose"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-        {deleteError && (
-          <p className="form-error delete-error">{deleteError}</p>
-        )}
+        <article className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+        {actionError && <p className="form-error delete-error">{actionError}</p>}
       </main>
 
       <footer className="detail-actions">
-        {confirmDelete ? (
+        {confirmPurge ? (
           <>
             <button
               type="button"
               className="btn-secondary"
-              onClick={cancelDelete}
-              disabled={deleting}
+              disabled={busy}
+              onClick={() => setConfirmPurge(false)}
             >
               取消
             </button>
             <button
               type="button"
               className="btn-danger"
-              onClick={() => void onDelete()}
-              disabled={deleting}
+              disabled={busy}
+              onClick={() => void onPurge()}
             >
-              {deleting ? "移入中…" : "确认移入废纸篓"}
+              {busy ? "删除中…" : "确认彻底删除"}
             </button>
           </>
         ) : (
           <>
-            <Link to={`/entries/${entry.id}/edit`} className="btn-primary">
-              编辑
-            </Link>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy}
+              onClick={() => void onRestore()}
+            >
+              {busy ? "处理中…" : "恢复"}
+            </button>
             <button
               type="button"
               className="btn-danger"
-              onClick={() => void onDelete()}
-              disabled={deleting}
+              disabled={busy}
+              onClick={() => void onPurge()}
             >
-              移入废纸篓
+              彻底删除
             </button>
           </>
         )}

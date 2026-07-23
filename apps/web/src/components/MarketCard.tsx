@@ -56,6 +56,18 @@ export function MarketCard({
   }, [date, editable, onChange]);
 
   const data = local;
+  const turnoverChangeAmt = (() => {
+    if (data?.turnoverChangeAmt != null) return data.turnoverChangeAmt;
+    if (
+      data?.turnoverVsPrev &&
+      data.turnoverVsPrev !== "flat" &&
+      data.prevTurnover != null &&
+      data.turnover > 0
+    ) {
+      return Math.round(Math.abs(data.turnover - data.prevTurnover) * 100) / 100;
+    }
+    return null;
+  })();
   const summary = (() => {
     if (loading) return "加载中…";
     if (!data || !data.available) return data?.message || "行情暂不可用";
@@ -104,11 +116,33 @@ export function MarketCard({
                   <b className="up">{data.breadth.rise}</b> /{" "}
                   <b className="down">{data.breadth.fall}</b>
                 </span>
-                <span>
+                <span className="market-turnover-row">
                   成交额 <b>{data.turnover}</b> 亿
+                  {data.turnoverVsPrev && (
+                    <span
+                      className={`turnover-vs-prev ${data.turnoverVsPrev === "up" ? "up" : data.turnoverVsPrev === "down" ? "down" : "muted"}`}
+                      title={
+                        data.prevTradeDate && data.prevTurnover != null
+                          ? `上一交易日 ${data.prevTradeDate} 成交额 ${data.prevTurnover} 亿${
+                              data.turnoverChangePct != null
+                                ? `（${data.turnoverChangePct > 0 ? "+" : ""}${data.turnoverChangePct}%）`
+                                : ""
+                            }`
+                          : undefined
+                      }
+                    >
+                      较上一日{data.turnoverVsPrev === "up" ? "增量" : data.turnoverVsPrev === "down" ? "缩量" : "持平"}
+                      {data.turnoverVsPrev !== "flat" &&
+                        turnoverChangeAmt != null &&
+                        ` ${turnoverChangeAmt} 亿`}
+                    </span>
+                  )}
+                  {data.snapshotType === "intraday" && !data.snapshotComplete && (
+                    <span className="turnover-tag intraday">盘中</span>
+                  )}
                 </span>
                 <span>
-                  资金净流入{" "}
+                  主力净流入{" "}
                   <b className={data.capitalInflow >= 0 ? "up" : "down"}>
                     {data.capitalInflow >= 0 ? "+" : ""}
                     {data.capitalInflow}

@@ -29,7 +29,7 @@ npm run dev:web
 
 - 前端：http://127.0.0.1:5173  
 - API：http://127.0.0.1:3000/api/health  
-- 默认账号：`admin` / `ChangeMe_Admin_2026`
+- 默认账号：`admin` / `123456`
 
 **当前阶段**：核心代码已落地（鉴权、日记 CRUD、大盘、TipTap、PWA、Compose）。请在本机终端按上面步骤启动联调，交付前跑完自测清单。
 

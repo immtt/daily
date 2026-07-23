@@ -5,6 +5,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const SEED_STOCKS: Array<{ code: string; name: string; market: string }> = [
+  { code: "000021", name: "深科技", market: "SZ" },
   { code: "600519", name: "贵州茅台", market: "SH" },
   { code: "601318", name: "中国平安", market: "SH" },
   { code: "600036", name: "招商银行", market: "SH" },

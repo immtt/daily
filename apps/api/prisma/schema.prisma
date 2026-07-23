@@ -1,9 +1,10 @@
+// 本地开发默认：SQLite（单文件，无需单独起数据库进程）
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -19,55 +20,76 @@ enum UserStatus {
 }
 
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  username     String     @unique @db.VarChar(50)
-  passwordHash String     @map("password_hash") @db.VarChar(255)
+  id           String     @id @default(uuid())
+  username     String     @unique
+  passwordHash String     @map("password_hash")
   role         UserRole   @default(user)
   status       UserStatus @default(pending)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
   entries      DiaryEntry[]
 
   @@map("users")
 }
 
 model StockCatalog {
-  code      String   @id @db.VarChar(16)
-  name      String   @db.VarChar(64)
-  market    String   @db.VarChar(8)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  code      String   @id
+  name      String
+  market    String
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([name], map: "idx_stock_catalog_name")
   @@map("stock_catalog")
 }
 
 model DiaryEntry {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  title          String   @db.VarChar(200)
-  entryDate      DateTime @map("entry_date") @db.Date
-  pnlDay         Decimal? @map("pnl_day") @db.Decimal(12, 2)
-  pnlTotal       Decimal? @map("pnl_total") @db.Decimal(12, 2)
-  mood           String?  @db.VarChar(20)
-  marketSnapshot Json?    @map("market_snapshot")
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  title          String
+  entryDate      DateTime  @map("entry_date")
+  pnlDay         Decimal?  @map("pnl_day")
+  pnlTotal       Decimal?  @map("pnl_total")
+  mood           String?
+  marketSnapshot Json?     @map("market_snapshot")
   content        Json
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stocks         DiaryStock[]
 
-  @@index([userId, entryDate(sort: Desc)], map: "idx_diary_entries_user_date")
+  @@index([userId, entryDate], map: "idx_diary_entries_user_date")
+  @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
   @@map("diary_entries")
 }
 
 model DiaryStock {
-  id      String     @id @default(uuid()) @db.Uuid
-  entryId String     @map("entry_id") @db.Uuid
-  code    String     @db.VarChar(16)
-  name    String     @db.VarChar(64)
+  id      String     @id @default(uuid())
+  entryId String     @map("entry_id")
+  code    String
+  name    String
   entry   DiaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
 
   @@index([entryId], map: "idx_diary_stocks_entry")
   @@index([code], map: "idx_diary_stocks_code")
   @@map("diary_stocks")
+}
+
+/// 大盘每日收盘快照（仅完整收盘可入库；盘中数据不入库）
+model MarketDailySnapshot {
+  tradeDate     String   @id @map("trade_date")
+  snapshotKind  String   @map("snapshot_kind")
+  isComplete    Boolean  @default(false) @map("is_complete")
+  indices       Json
+  breadthRise   Int      @map("breadth_rise")
+  breadthFall   Int      @map("breadth_fall")
+  turnover      Decimal
+  capitalInflow Decimal  @map("capital_inflow")
+  source        String?
+  capturedAt    DateTime @map("captured_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([tradeDate(sort: Desc), isComplete], map: "idx_market_snapshots_date_complete")
+  @@map("market_daily_snapshots")
 }

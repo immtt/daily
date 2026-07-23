@@ -1,4 +1,5 @@
 import EmbeddedPostgres from "embedded-postgres";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,8 +15,15 @@ const pg = new EmbeddedPostgres({
 });
 
 async function main() {
-  console.log("Initialising embedded Postgres at", databaseDir);
-  await pg.initialise();
+  const hasCluster = existsSync(path.join(databaseDir, "PG_VERSION"));
+  console.log(
+    hasCluster
+      ? `Starting existing Postgres cluster at ${databaseDir}`
+      : `Initialising new Postgres cluster at ${databaseDir}`
+  );
+  if (!hasCluster) {
+    await pg.initialise();
+  }
   await pg.start();
   try {
     await pg.createDatabase("stock_diary");

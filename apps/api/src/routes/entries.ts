@@ -1,7 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { formatDate, parseDateOnly, sendError, toNum } from "../lib/util.js";
+import { formatDate, parseDateOnly, sendError, toNum, entryIdPath } from "../lib/util.js";
+import { purgeAt, TRASH_RETENTION_DAYS } from "../services/trash.js";
+import { matchStocksInText, resolveStockFilter } from "../services/stockMatch.js";
 import type { Prisma } from "@prisma/client";
 
 const stockSchema = z.object({
@@ -20,6 +22,24 @@ const entryBodySchema = z.object({
   content: z.any().optional().default({ type: "doc", content: [] }),
 });
 
+const activeOnly = { deletedAt: null } as const;
+
+async function enrichStocks(stocks: Array<{ code: string; name: string }>) {
+  if (stocks.length === 0) return stocks;
+  const codes = stocks.map((s) => s.code);
+  const catalog = await prisma.stockCatalog.findMany({
+    where: { code: { in: codes } },
+  });
+  const nameMap = new Map(catalog.map((c) => [c.code, c.name]));
+  return stocks.map((s) => ({
+    code: s.code,
+    name:
+      nameMap.get(s.code) ||
+      (s.name && s.name !== s.code ? s.name : undefined) ||
+      s.code,
+  }));
+}
+
 function serializeEntry(
   e: {
     id: string;
@@ -30,13 +50,14 @@ function serializeEntry(
     mood: string | null;
     marketSnapshot: Prisma.JsonValue | null;
     content?: Prisma.JsonValue;
+    deletedAt?: Date | null;
     createdAt: Date;
     updatedAt: Date;
     stocks: Array<{ code: string; name: string }>;
   },
   withContent = false
 ) {
-  const base = {
+  const base: Record<string, unknown> = {
     id: e.id,
     title: e.title,
     entryDate: formatDate(e.entryDate),
@@ -48,6 +69,10 @@ function serializeEntry(
     createdAt: e.createdAt.toISOString(),
     updatedAt: e.updatedAt.toISOString(),
   };
+  if (e.deletedAt) {
+    base.deletedAt = e.deletedAt.toISOString();
+    base.purgeAt = purgeAt(e.deletedAt);
+  }
   if (withContent) {
     return { ...base, content: e.content ?? { type: "doc", content: [] } };
   }
@@ -59,43 +84,136 @@ async function resolveStocks(
   content: unknown
 ) {
   const fromBody = new Map(stocks.map((s) => [s.code, s.name]));
-  const codes = new Set<string>([...fromBody.keys()]);
-
   const text = JSON.stringify(content ?? {});
-  const matches = text.match(/\b([036]\d{5})\b/g) ?? [];
-  for (const c of matches) codes.add(c);
-
+  const matched = await matchStocksInText(prisma, text);
+  const codes = new Set<string>([...fromBody.keys(), ...matched.map((s) => s.code)]);
   if (codes.size === 0) return [] as Array<{ code: string; name: string }>;
-
   const catalog = await prisma.stockCatalog.findMany({
     where: { code: { in: [...codes] } },
   });
   const nameMap = new Map(catalog.map((c) => [c.code, c.name]));
-
-  return [...codes].map((code) => ({
-    code,
-    name: fromBody.get(code) || nameMap.get(code) || code,
-  }));
+  for (const s of matched) {
+    if (s.name && s.name !== s.code) nameMap.set(s.code, s.name);
+  }
+  return [...codes].map((code) => {
+    const catalogName = nameMap.get(code);
+    const clientName = fromBody.get(code);
+    const name =
+      catalogName ||
+      (clientName && clientName !== code ? clientName : undefined) ||
+      code;
+    return { code, name };
+  });
 }
 
 export async function entryRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
+  // --- 废纸篓（须在 /entries/:id 之前注册）---
+  app.get("/entries/trash", async (req) => {
+    const q = req.query as Record<string, string | undefined>;
+    const page = Math.max(1, Number(q.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(q.pageSize) || 20));
+    const where: Prisma.DiaryEntryWhereInput = {
+      userId: req.user.id,
+      deletedAt: { not: null },
+    };
+    const [total, items] = await Promise.all([
+      prisma.diaryEntry.count({ where }),
+      prisma.diaryEntry.findMany({
+        where,
+        include: { stocks: true },
+        orderBy: [{ deletedAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    return {
+      items: await Promise.all(
+        items.map(async (e) =>
+          serializeEntry({ ...e, stocks: await enrichStocks(e.stocks) })
+        )
+      ),
+      total,
+      page,
+      pageSize,
+      retentionDays: TRASH_RETENTION_DAYS,
+    };
+  });
+
+  app.get(`/entries/trash/${entryIdPath}`, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const entry = await prisma.diaryEntry.findFirst({
+      where: { id, userId: req.user.id, deletedAt: { not: null } },
+      include: { stocks: true },
+    });
+    if (!entry) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
+    return serializeEntry(
+      { ...entry, stocks: await enrichStocks(entry.stocks) },
+      true
+    );
+  });
+
+  app.post(`/entries/trash/${entryIdPath}/restore`, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const existing = await prisma.diaryEntry.findFirst({
+      where: { id, userId: req.user.id, deletedAt: { not: null } },
+    });
+    if (!existing) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
+    const entry = await prisma.diaryEntry.update({
+      where: { id },
+      data: { deletedAt: null },
+      include: { stocks: true },
+    });
+    return serializeEntry(
+      { ...entry, stocks: await enrichStocks(entry.stocks) },
+      true
+    );
+  });
+
+  app.delete(`/entries/trash/${entryIdPath}`, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const existing = await prisma.diaryEntry.findFirst({
+      where: { id, userId: req.user.id, deletedAt: { not: null } },
+    });
+    if (!existing) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
+    await prisma.diaryEntry.delete({ where: { id } });
+    return { ok: true };
+  });
+
+  // --- 正常日记 ---
   app.get("/entries", async (req) => {
     const q = req.query as Record<string, string | undefined>;
     const page = Math.max(1, Number(q.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(q.pageSize) || 20));
-    const where: Prisma.DiaryEntryWhereInput = { userId: req.user.id };
-
+    const where: Prisma.DiaryEntryWhereInput = {
+      userId: req.user.id,
+      ...activeOnly,
+    };
     if (q.from || q.to) {
       where.entryDate = {};
       if (q.from) where.entryDate.gte = parseDateOnly(q.from);
       if (q.to) where.entryDate.lte = parseDateOnly(q.to);
     }
     if (q.stockCode) {
-      where.stocks = { some: { code: q.stockCode } };
+      const filter = await resolveStockFilter(prisma, q.stockCode);
+      if (filter.codes.length === 0 && !filter.nameContains) {
+        where.stocks = { some: { code: "__none__" } };
+      } else if (filter.nameContains) {
+        where.stocks = {
+          some: {
+            OR: [
+              ...(filter.codes.length
+                ? [{ code: { in: filter.codes } }]
+                : []),
+              { name: { contains: filter.nameContains } },
+            ],
+          },
+        };
+      } else {
+        where.stocks = { some: { code: { in: filter.codes } } };
+      }
     }
-
     const [total, items] = await Promise.all([
       prisma.diaryEntry.count({ where }),
       prisma.diaryEntry.findMany({
@@ -106,9 +224,12 @@ export async function entryRoutes(app: FastifyInstance) {
         take: pageSize,
       }),
     ]);
-
     return {
-      items: items.map((e) => serializeEntry(e)),
+      items: await Promise.all(
+        items.map(async (e) =>
+          serializeEntry({ ...e, stocks: await enrichStocks(e.stocks) })
+        )
+      ),
       total,
       page,
       pageSize,
@@ -122,7 +243,6 @@ export async function entryRoutes(app: FastifyInstance) {
     }
     const data = parsed.data;
     const stocks = await resolveStocks(data.stocks, data.content);
-
     const entry = await prisma.diaryEntry.create({
       data: {
         userId: req.user.id,
@@ -137,27 +257,33 @@ export async function entryRoutes(app: FastifyInstance) {
       },
       include: { stocks: true },
     });
-
-    return reply.status(201).send(serializeEntry(entry, true));
+    return reply.status(201).send(
+      serializeEntry(
+        { ...entry, stocks: await enrichStocks(entry.stocks) },
+        true
+      )
+    );
   });
 
-  app.get("/entries/:id", async (req, reply) => {
+  app.get(`/entries/${entryIdPath}`, async (req, reply) => {
     const { id } = req.params as { id: string };
     const entry = await prisma.diaryEntry.findFirst({
-      where: { id, userId: req.user.id },
+      where: { id, userId: req.user.id, ...activeOnly },
       include: { stocks: true },
     });
     if (!entry) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-    return serializeEntry(entry, true);
+    return serializeEntry(
+      { ...entry, stocks: await enrichStocks(entry.stocks) },
+      true
+    );
   });
 
-  app.patch("/entries/:id", async (req, reply) => {
+  app.patch(`/entries/${entryIdPath}`, async (req, reply) => {
     const { id } = req.params as { id: string };
     const existing = await prisma.diaryEntry.findFirst({
-      where: { id, userId: req.user.id },
+      where: { id, userId: req.user.id, ...activeOnly },
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-
     const parsed = entryBodySchema.partial().safeParse(req.body);
     if (!parsed.success) {
       return sendError(reply, 400, "参数校验失败", "VALIDATION_ERROR");
@@ -170,7 +296,6 @@ export async function entryRoutes(app: FastifyInstance) {
             data.content ?? existing.content
           )
         : null;
-
     const entry = await prisma.$transaction(async (tx) => {
       if (stocks) {
         await tx.diaryStock.deleteMany({ where: { entryId: id } });
@@ -196,17 +321,28 @@ export async function entryRoutes(app: FastifyInstance) {
         include: { stocks: true },
       });
     });
-
-    return serializeEntry(entry, true);
+    return serializeEntry(
+      { ...entry, stocks: await enrichStocks(entry.stocks) },
+      true
+    );
   });
 
-  app.delete("/entries/:id", async (req, reply) => {
+  /** 移至废纸篓（软删除） */
+  app.delete(`/entries/${entryIdPath}`, async (req, reply) => {
     const { id } = req.params as { id: string };
     const existing = await prisma.diaryEntry.findFirst({
-      where: { id, userId: req.user.id },
+      where: { id, userId: req.user.id, ...activeOnly },
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-    await prisma.diaryEntry.delete({ where: { id } });
-    return reply.status(204).send();
+    const entry = await prisma.diaryEntry.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      include: { stocks: true },
+    });
+    return {
+      ok: true,
+      deletedAt: entry.deletedAt!.toISOString(),
+      purgeAt: purgeAt(entry.deletedAt!),
+    };
   });
 }

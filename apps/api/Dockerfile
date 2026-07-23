@@ -10,7 +10,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY apps/api ./apps/api
 WORKDIR /app/apps/api
-RUN npx prisma generate && npm run build
+RUN npx prisma generate --schema=prisma/postgresql/schema.prisma && npm run build
 
 FROM node:20-alpine
 WORKDIR /app
@@ -21,4 +21,4 @@ COPY --from=build /app/apps/api/prisma ./prisma
 COPY --from=build /app/node_modules ./node_modules
 RUN mkdir -p /app/uploads
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=prisma/postgresql/schema.prisma && node dist/index.js"]

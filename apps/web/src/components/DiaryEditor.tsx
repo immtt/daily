@@ -4,13 +4,14 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { api } from "../api/client";
+import {
+  enrichContentStocks,
+} from "../lib/stockText";
 
 type Props = {
   value: unknown;
   onChange: (json: unknown) => void;
 };
-
-const CODE_RE = /\b([036]\d{5})\b/g;
 
 export function DiaryEditor({ value, onChange }: Props) {
   const lookupCache = useRef(new Map<string, string>());
@@ -22,7 +23,7 @@ export function DiaryEditor({ value, onChange }: Props) {
       StarterKit,
       Image.configure({ inline: false, allowBase64: false }),
       Placeholder.configure({
-        placeholder: "写下今日复盘…输入股票代码自动带出名称",
+        placeholder: "写下今日复盘…输入股票代码或名称，自动带出对应信息",
       }),
     ],
     content: (value as object) || { type: "doc", content: [] },
@@ -32,7 +33,7 @@ export function DiaryEditor({ value, onChange }: Props) {
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => {
         void autoTagify(ed);
-      }, 500);
+      }, 400);
     },
   });
 
@@ -44,52 +45,36 @@ export function DiaryEditor({ value, onChange }: Props) {
       applying.current = true;
       editor.commands.setContent(value as object);
       applying.current = false;
+      window.setTimeout(() => {
+        void autoTagify(editor);
+      }, 200);
     }
   }, [value, editor]);
 
   async function autoTagify(ed: NonNullable<typeof editor>) {
+    if (applying.current) return;
+
+    const json = ed.getJSON();
     const text = ed.getText();
-    const codes = [...new Set([...text.matchAll(CODE_RE)].map((m) => m[1]))];
-    if (codes.length === 0) return;
+    if (!text.trim()) return;
 
-    const missing = codes.filter((c) => !lookupCache.current.has(c));
-    if (missing.length) {
-      try {
-        const res = await api.lookupStocks(missing);
-        for (const s of res.items) lookupCache.current.set(s.code, s.name);
-        for (const c of missing) {
-          if (!lookupCache.current.has(c)) lookupCache.current.set(c, c);
-        }
-      } catch {
-        return;
+    try {
+      const res = await api.resolveStocksInText(text);
+      for (const s of res.items) {
+        lookupCache.current.set(s.code, s.name);
       }
-    }
+      if (res.items.length === 0) return;
 
-    let next = text;
-    let changed = false;
-    for (const code of codes) {
-      const name = lookupCache.current.get(code);
-      if (!name || name === code) continue;
-      const tagged = `${code} ${name}`;
-      if (next.includes(tagged)) continue;
-      // only replace standalone code not already followed by name
-      const re = new RegExp(`\\b${code}\\b(?!\\s+${escapeReg(name)})`, "g");
-      if (re.test(next)) {
-        next = next.replace(re, tagged);
-        changed = true;
-      }
-    }
-    if (!changed) return;
+      const enriched = enrichContentStocks(json, res.items);
+      if (JSON.stringify(enriched) === JSON.stringify(json)) return;
 
-    // Rebuild as simple paragraphs preserving line breaks
-    const paragraphs = next.split(/\n+/).map((line) => ({
-      type: "paragraph",
-      content: line ? [{ type: "text", text: line }] : [],
-    }));
-    applying.current = true;
-    ed.commands.setContent({ type: "doc", content: paragraphs });
-    onChange(ed.getJSON());
-    applying.current = false;
+      applying.current = true;
+      ed.commands.setContent(enriched as object);
+      onChange(ed.getJSON());
+      applying.current = false;
+    } catch {
+      // 保留已有内容，不打断输入
+    }
   }
 
   async function insertImage() {
@@ -142,11 +127,4 @@ export function DiaryEditor({ value, onChange }: Props) {
   );
 }
 
-function escapeReg(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-export function extractCodesFromContent(content: unknown): string[] {
-  const text = JSON.stringify(content ?? {});
-  return [...new Set([...text.matchAll(CODE_RE)].map((m) => m[1]))];
-}
+export { extractCodesFromContent } from "../lib/stockText";

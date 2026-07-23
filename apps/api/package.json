@@ -4,31 +4,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npm run build && node dist/index.js",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate": "prisma migrate deploy --schema=prisma/postgresql/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema=prisma/postgresql/schema.prisma",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:generate": "prisma generate"
+    "db:seed": "node --import tsx/esm prisma/seed.ts",
+    "db:generate": "prisma generate",
+    "db:generate:pg": "prisma generate --schema=prisma/postgresql/schema.prisma",
+    "update-stocks": "npx tsx ../../scripts/update-stock-catalog.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
     "@fastify/jwt": "^8.0.1",
     "@fastify/multipart": "^8.3.0",
     "@fastify/static": "^7.0.4",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.2.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
-    "embedded-postgres": "^18.4.0-beta.17",
     "fastify": "^4.29.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.5",
-    "prisma": "^5.22.0",
+    "prisma": "^6.2.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

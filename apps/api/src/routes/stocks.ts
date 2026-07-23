@@ -1,8 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
+import { matchStocksInText } from "../services/stockMatch.js";
 
 export async function stockRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
+
+  app.post("/stocks/resolve-text", async (req) => {
+    const text = (req.body as { text?: string })?.text ?? "";
+    const items = await matchStocksInText(prisma, text);
+    return { items };
+  });
 
   app.get("/stocks/lookup", async (req) => {
     const q = req.query as { codes?: string };
@@ -28,10 +35,7 @@ export async function stockRoutes(app: FastifyInstance) {
     if (!q) return { items: [] };
     const items = await prisma.stockCatalog.findMany({
       where: {
-        OR: [
-          { code: { contains: q } },
-          { name: { contains: q } },
-        ],
+        OR: [{ code: { contains: q } }, { name: { contains: q } }],
       },
       take: 20,
       orderBy: { code: "asc" },

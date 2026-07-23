@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "复盘日记",
-        short_name: "复盘日记",
-        description: "多端同步的股票复盘日记本",
-        theme_color: "#0d7377",
-        background_color: "#f2f6f4",
+        name: "增长日记",
+        short_name: "增长日记",
+        description: "多端同步的股票增长日记",
+        theme_color: "#c41e3a",
+        background_color: "#fff9f5",
         display: "standalone",
         start_url: "/",
         icons: [
@@ -30,21 +30,15 @@ export default defineConfig({
         ],
       },
       workbox: {
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              networkTimeoutSeconds: 8,
-            },
-          },
-        ],
+        // 仅缓存静态资源；API 请求（含 DELETE）一律走网络，避免 PWA 拦截
+        navigateFallback: "index.html",
       },
     }),
   ],
   server: {
+    host: "127.0.0.1",
     port: 5173,
+    strictPort: true,
     proxy: {
       "/api": "http://127.0.0.1:3000",
       "/uploads": "http://127.0.0.1:3000",
