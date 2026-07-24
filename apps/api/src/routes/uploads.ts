@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { sendError } from "../lib/util.js";
+import { thumbFilename, writeImageWithThumb } from "../lib/imageThumb.js";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 const EXT: Record<string, string> = {
@@ -32,10 +33,14 @@ export async function uploadRoutes(app: FastifyInstance) {
       const uploadRoot = process.env.UPLOAD_DIR || "./uploads";
       const userDir = path.join(uploadRoot, req.user.id);
       await mkdir(userDir, { recursive: true });
-      const filename = `${randomUUID()}${EXT[file.mimetype]}`;
-      await writeFile(path.join(userDir, filename), buf);
+      const baseId = randomUUID();
+      const filename = `${baseId}${EXT[file.mimetype]}`;
+      const destPath = path.join(userDir, filename);
+      const thumbName = thumbFilename(baseId);
+      await writeImageWithThumb(buf, destPath, path.join(userDir, thumbName));
       const url = `/uploads/${req.user.id}/${filename}`;
-      return reply.status(201).send({ url });
+      const thumbUrl = `/uploads/${req.user.id}/${thumbName}`;
+      return reply.status(201).send({ url, thumbUrl });
     }
   );
 }

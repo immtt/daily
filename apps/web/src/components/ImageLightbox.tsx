@@ -35,6 +35,14 @@ export function ImageLightbox({ urls, index, onClose, onIndexChange }: Props) {
     };
   }, [go, onClose]);
 
+  useEffect(() => {
+    for (const i of [index - 1, index + 1]) {
+      if (i < 0 || i >= urls.length) continue;
+      const img = new window.Image();
+      img.src = urls[i];
+    }
+  }, [index, urls]);
+
   if (!urls.length || index < 0 || index >= urls.length) return null;
 
   function onPointerDown(e: React.PointerEvent) {
@@ -115,7 +123,13 @@ export function ImageLightbox({ urls, index, onClose, onIndexChange }: Props) {
           transform: dragX ? `translateX(${dragX * 0.35}px)` : undefined,
         }}
       >
-        <img src={urls[index]} alt={`预览 ${index + 1}`} draggable={false} />
+        <img
+          src={urls[index]}
+          alt={`预览 ${index + 1}`}
+          draggable={false}
+          decoding="async"
+          fetchPriority="high"
+        />
       </div>
     </div>
   );

@@ -1,3 +1,18 @@
+/** 原图 URL → 缩略图 URL（约定：同 id 的 _t.webp） */
+export function imageThumbUrl(src: string): string {
+  const m = src.match(/^(.+)\.(jpe?g|png|webp)$/i);
+  if (!m) return src;
+  return `${m[1]}_t.webp`;
+}
+
+/** 列表/正文展示用缩略图；Lightbox 仍用原图 attrs.src */
+export function imageDisplaySrc(src: string): string {
+  return imageThumbUrl(src);
+}
+
+const IMG_ATTRS =
+  'loading="lazy" decoding="async" onerror="if(this.dataset.fullSrc){this.onerror=null;this.src=this.dataset.fullSrc}"';
+
 /** 从 TipTap JSON 提取图片 URL（去重保序） */
 export function extractImageUrls(content: unknown): string[] {
   const urls: string[] = [];
@@ -24,4 +39,16 @@ export function extractImageUrls(content: unknown): string[] {
 
   walk(content);
   return urls;
+}
+
+export function renderImageHtml(src: string): string {
+  if (!src) return "";
+  const thumb = imageThumbUrl(src);
+  const esc = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  return `<img src="${esc(thumb)}" data-full-src="${esc(src)}" alt="" ${IMG_ATTRS} />`;
 }

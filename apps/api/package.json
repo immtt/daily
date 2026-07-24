@@ -13,6 +13,7 @@
     "db:seed": "node --import tsx/esm prisma/seed.ts",
     "db:generate": "prisma generate",
     "db:generate:pg": "prisma generate --schema=prisma/postgresql/schema.prisma",
+    "test:sharp": "node scripts/test-image-thumb.mjs",
     "update-stocks": "npx tsx ../../scripts/update-stock-catalog.ts"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "fastify": "^4.29.0",
+    "sharp": "^0.33.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

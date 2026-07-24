@@ -2,6 +2,7 @@ import { generateHTML as tiptapGenerateHTML } from "@tiptap/html";
 import type { JSONContent } from "@tiptap/core";
 import { getReadExtensions } from "./editorExtensions";
 import { normalizeContentStructure } from "./normalizeContent";
+import { renderImageHtml } from "./images";
 
 /** TipTap JSON → HTML，与编辑器扩展保持一致 */
 export function generateHTML(content: unknown): string {
@@ -52,7 +53,7 @@ function legacyGenerateHTML(content: unknown): string {
     case "codeBlock":
       return `<pre><code>${kids}</code></pre>`;
     case "image":
-      return `<img src="${escapeAttr(node.attrs?.src || "")}" alt="" />`;
+      return renderImageHtml(String(node.attrs?.src || ""));
     case "hardBreak":
       return "<br/>";
     case "horizontalRule":
@@ -67,8 +68,4 @@ function escapeHtml(s: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string) {
-  return escapeHtml(s).replace(/"/g, "&quot;");
 }

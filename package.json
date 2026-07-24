@@ -17,6 +17,8 @@
     "db:seed": "npm run db:seed -w @stock-diary/api",
     "update-stocks": "npm run update-stocks -w @stock-diary/api",
     "reset-password": "node scripts/reset-password.mjs",
-    "restart:dev": "bash scripts/restart-dev.sh"
+    "restart:dev": "bash scripts/restart-dev.sh",
+    "test:sharp": "npm run test:sharp -w @stock-diary/api",
+    "test:sharp:docker": "bash scripts/verify-sharp-docker.sh"
   }
 }

@@ -71,6 +71,9 @@ async function main() {
     root: uploadDir,
     prefix: "/uploads/",
     decorateReply: false,
+    cacheControl: true,
+    maxAge: 60 * 60 * 24 * 30,
+    immutable: true,
   });
 
   await registerAuthGuards(app);

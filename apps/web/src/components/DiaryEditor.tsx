@@ -25,6 +25,7 @@ export function DiaryEditor({
   const applying = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const editor = useEditor({
     extensions: getEditorExtensions(placeholder),
@@ -117,7 +118,7 @@ export function DiaryEditor({
   }
 
   async function insertImage() {
-    if (!editor) return;
+    if (!editor || uploading) return;
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/jpeg,image/png,image/webp";
@@ -125,18 +126,54 @@ export function DiaryEditor({
     input.onchange = async () => {
       const files = input.files;
       if (!files?.length) return;
+
+      const valid: File[] = [];
       for (const file of Array.from(files)) {
         if (file.size > 5 * 1024 * 1024) {
           alert(`${file.name} 超过 5MB，已跳过`);
           continue;
         }
-        try {
-          const { url } = await api.upload(file);
-          editor.chain().focus().setImage({ src: url }).run();
-        } catch (e) {
-          alert(e instanceof Error ? e.message : `${file.name} 上传失败`);
-        }
+        valid.push(file);
       }
+      if (!valid.length) return;
+
+      setUploading(true);
+      const ordered: Array<{ index: number; url: string } | { index: number; error: string }> =
+        await Promise.all(
+          valid.map(async (file, index) => {
+            try {
+              const { url } = await api.upload(file);
+              return { index, url };
+            } catch (e) {
+              return {
+                index,
+                error: e instanceof Error ? e.message : `${file.name} 上传失败`,
+              };
+            }
+          })
+        );
+
+      setUploading(false);
+
+      const errors = ordered
+        .filter((r): r is { index: number; error: string } => "error" in r)
+        .map((r) => r.error);
+      if (errors.length) alert(errors.join("\n"));
+
+      const urls = ordered
+        .filter((r): r is { index: number; url: string } => "url" in r)
+        .sort((a, b) => a.index - b.index)
+        .map((r) => r.url);
+
+      if (!urls.length) return;
+
+      const nodes = urls.flatMap((src, i) => {
+        const blocks: object[] = [{ type: "image", attrs: { src } }];
+        if (i < urls.length - 1) blocks.push({ type: "paragraph" });
+        return blocks;
+      });
+
+      editor.chain().focus().insertContent(nodes).run();
     };
     input.click();
   }
@@ -160,8 +197,12 @@ export function DiaryEditor({
         >
           列表
         </button>
-        <button type="button" onClick={() => void insertImage()}>
-          插图（可多选）
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => void insertImage()}
+        >
+          {uploading ? "上传中…" : "插图（可多选）"}
         </button>
       </div>
       <EditorContent editor={editor} className="editor-body entry-body" />
