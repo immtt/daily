@@ -7,6 +7,7 @@ import { isLifeUnlocked } from "../lib/lifeAccess";
 import { useAuth } from "../hooks/useAuth";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
+import { ListFabStack } from "../components/ListFabStack";
 import { MoodFace } from "../components/MoodFace";
 import { MoodScoreBadge } from "../components/MoodScore";
 import { BookTagRow } from "../components/BookTagInput";
@@ -83,7 +84,7 @@ export function SimpleEntryListPage({
         }
       />
 
-      <HomeTabNav active="diary" domain={domain} domainLabel={domainLabel} />
+      <HomeTabNav domain={domain} domainLabel={domainLabel} />
 
       <main className="app-main">
         <section className="filter-bar filter-bar--simple">
@@ -181,9 +182,10 @@ export function SimpleEntryListPage({
         )}
       </main>
 
-      <Link to={domainNewPath(domain)} className="fab-write" aria-label={`写${domainLabel}笔记`}>
-        +
-      </Link>
+      <ListFabStack
+        writeTo={domainNewPath(domain)}
+        writeLabel={`写${domainLabel}笔记`}
+      />
     </div>
   );
 }

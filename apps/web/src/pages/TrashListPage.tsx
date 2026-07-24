@@ -40,7 +40,6 @@ export function TrashListPage() {
   const domainFilter: DomainFilter =
     domainParam && isEntryDomain(domainParam) ? domainParam : "";
 
-  const navDomain: EntryDomain = domainFilter || "stock";
   const [items, setItems] = useState<DiaryEntry[]>([]);
   const [retentionDays, setRetentionDays] = useState(7);
   const [loading, setLoading] = useState(true);
@@ -99,11 +98,7 @@ export function TrashListPage() {
         }
       />
 
-      <HomeTabNav
-        active="trash"
-        domain={navDomain}
-        domainLabel={domainFilter ? domainLabel(domainFilter) : "全部"}
-      />
+      <HomeTabNav domainLabel="废纸篓" />
 
       <main className="app-main">
         <div className="category-tabs" role="tablist" aria-label="方向筛选">

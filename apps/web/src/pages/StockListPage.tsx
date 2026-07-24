@@ -10,6 +10,7 @@ import {
 import { domainNewPath } from "../lib/domain";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
+import { ListFabStack } from "../components/ListFabStack";
 import { MoodFace } from "../components/MoodFace";
 import { MoodScoreBadge } from "../components/MoodScore";
 import { StockTagRow } from "../components/ProseGallery";
@@ -72,7 +73,7 @@ export function StockListPage() {
         }
       />
 
-      <HomeTabNav active="diary" domain="stock" domainLabel="股票" />
+      <HomeTabNav domain="stock" domainLabel="股票" />
 
       <main className="app-main">
         <div className="category-tabs" role="tablist" aria-label="日记分类">
@@ -179,9 +180,7 @@ export function StockListPage() {
         )}
       </main>
 
-      <Link to={domainNewPath("stock")} className="fab-write" aria-label="写股票笔记">
-        +
-      </Link>
+      <ListFabStack writeTo={domainNewPath("stock")} writeLabel="写股票笔记" />
     </div>
   );
 }
