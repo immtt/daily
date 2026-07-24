@@ -1113,30 +1113,14 @@ input {
   color: var(--brand-deep);
 }
 .editor-body .ProseMirror {
-  min-height: 180px;
-  padding: 12px 14px;
+  min-height: 220px;
+  padding: 14px 16px;
   outline: none;
-}
-.editor-body .ProseMirror p {
-  margin-bottom: 0.6em;
 }
 .prose .stock-name,
 .editor-body .ProseMirror .stock-name {
   color: var(--brand-deep);
   font-weight: 600;
-}
-.editor-body .ProseMirror img {
-  width: 96px;
-  height: 96px;
-  object-fit: cover;
-  border-radius: 10px;
-  margin: 8px 8px 8px 0;
-  cursor: zoom-in;
-  border: 1px solid var(--line);
-  vertical-align: middle;
-}
-.editor-body .ProseMirror ul {
-  padding-left: 1.2em;
 }
 .ProseMirror p.is-editor-empty:first-child::before {
   color: var(--placeholder);
@@ -1277,28 +1261,50 @@ input {
   box-shadow: var(--shadow);
   border: 1px solid var(--line);
 }
-.prose p {
-  margin-bottom: 0.85em;
+
+/* 编辑与详情共用正文排版（APP 预览格式） */
+.entry-body,
+.prose,
+.editor-body .ProseMirror {
+  font-size: 15px;
   line-height: 1.75;
+  word-break: break-word;
 }
-.prose p:last-child {
+.entry-body p,
+.prose p,
+.editor-body .ProseMirror p {
+  margin-bottom: 0.85em;
+}
+.entry-body p:last-child,
+.prose p:last-child,
+.editor-body .ProseMirror p:last-child {
   margin-bottom: 0;
 }
+.entry-body ul,
+.entry-body ol,
 .prose ul,
-.prose ol {
+.prose ol,
+.editor-body .ProseMirror ul,
+.editor-body .ProseMirror ol {
   margin-bottom: 0.85em;
   padding-left: 1.4em;
 }
-.prose li + li {
+.entry-body li + li,
+.prose li + li,
+.editor-body .ProseMirror li + li {
   margin-top: 0.25em;
 }
-.prose blockquote {
+.entry-body blockquote,
+.prose blockquote,
+.editor-body .ProseMirror blockquote {
   margin: 0.85em 0;
   padding-left: 12px;
   border-left: 3px solid var(--accent-border);
   color: var(--muted);
 }
-.prose pre {
+.entry-body pre,
+.prose pre,
+.editor-body .ProseMirror pre {
   margin: 0.85em 0;
   padding: 12px;
   border-radius: 8px;
@@ -1306,11 +1312,14 @@ input {
   border: 1px solid var(--line);
   overflow-x: auto;
 }
-.prose strong {
+.entry-body strong,
+.prose strong,
+.editor-body .ProseMirror strong {
   font-weight: 700;
 }
 .prose img,
-.prose--gallery img {
+.prose--gallery img,
+.editor-body .ProseMirror img {
   width: 96px;
   height: 96px;
   object-fit: cover;
@@ -1320,7 +1329,9 @@ input {
   border: 1px solid var(--line);
   vertical-align: middle;
 }
-.prose ul {
+.prose ul,
+.entry-body ul,
+.editor-body .ProseMirror ul {
   padding-left: 1.2em;
 }
 
@@ -1496,7 +1507,6 @@ input {
 
 @media (min-width: 900px) {
   .app-shell {
-    max-width: 720px;
     margin-top: 24px;
     margin-bottom: 24px;
     border-radius: 20px;

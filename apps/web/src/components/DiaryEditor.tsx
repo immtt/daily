@@ -151,7 +151,7 @@ export function DiaryEditor({ value, onChange }: Props) {
           插图
         </button>
       </div>
-      <EditorContent editor={editor} className="editor-body" />
+      <EditorContent editor={editor} className="editor-body entry-body" />
       {previewIndex != null && imageUrls.length > 0 && (
         <ImageLightbox
           urls={imageUrls}

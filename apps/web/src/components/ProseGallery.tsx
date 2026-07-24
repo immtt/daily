@@ -43,7 +43,7 @@ export function ProseGallery({ html, content, stocks, compactStocks }: Props) {
       {stockBlock}
       <article
         ref={articleRef}
-        className="prose prose--gallery"
+        className="prose prose--gallery entry-body"
         dangerouslySetInnerHTML={{ __html: html }}
         onClick={onArticleClick}
       />

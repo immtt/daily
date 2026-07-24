@@ -5,12 +5,7 @@ import { DiaryEditor, extractCodesFromContent } from "../components/DiaryEditor"
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
 import { MoodFace } from "../components/MoodFace";
-import {
-  ENTRY_CATEGORIES,
-  MOODS,
-  todayStr,
-  type EntryCategory,
-} from "../lib/format";
+import { normalizeContentStructure } from "../lib/normalizeContent";
 
 export function DiaryEditPage() {
   const { id } = useParams();
