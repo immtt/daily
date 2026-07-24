@@ -1240,6 +1240,43 @@ input {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+.entry-mood-group,
+.detail-mood-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mood-score-field {
+  margin-top: 0;
+}
+.mood-score-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mood-score-input-row input {
+  max-width: 160px;
+}
+.mood-score {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #6d28d9;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  white-space: nowrap;
+}
+.mood-score--compact {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
 /* Market */
 .market-card {
   background: var(--surface);

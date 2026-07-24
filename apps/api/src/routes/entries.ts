@@ -8,6 +8,7 @@ import { buildSearchText } from "../lib/searchText.js";
 import { assertTagForDomain, hasLifeAccess } from "../lib/entryTags.js";
 import { normalizeBooks } from "../lib/entryBooks.js";
 import { assertLocationForDomain, locationSchema } from "../lib/entryLocation.js";
+import { assertMoodScoreForDomain } from "../lib/entryMood.js";
 import { Prisma } from "@prisma/client";
 
 const stockSchema = z.object({
@@ -31,6 +32,9 @@ const entryBodySchema = z.object({
   pnlDay: z.union([z.number(), z.string(), z.null()]).optional(),
   pnlTotal: z.union([z.number(), z.string(), z.null()]).optional(),
   mood: z.string().max(20).nullable().optional(),
+  moodScore: z
+    .union([z.number().int().min(0).max(100), z.string(), z.null()])
+    .optional(),
   tag: z.string().max(32).nullable().optional(),
   books: z.array(bookSchema).optional().default([]),
   location: locationSchema.optional(),
@@ -101,6 +105,7 @@ function serializeEntry(
     pnlDay: Prisma.Decimal | null;
     pnlTotal: Prisma.Decimal | null;
     mood: string | null;
+    moodScore?: number | null;
     marketSnapshot: Prisma.JsonValue | null;
     content?: Prisma.JsonValue;
     deletedAt?: Date | null;
@@ -127,6 +132,7 @@ function serializeEntry(
     pnlDay: e.pnlDay == null ? null : Number(e.pnlDay),
     pnlTotal: e.pnlTotal == null ? null : Number(e.pnlTotal),
     mood: e.mood,
+    moodScore: e.moodScore ?? null,
     marketSnapshot: e.marketSnapshot,
     createdAt: e.createdAt.toISOString(),
     updatedAt: e.updatedAt.toISOString(),
@@ -181,6 +187,7 @@ function validateEntryBody(
       tag: string | null;
       books: Array<{ title: string }>;
       location: Prisma.InputJsonValue | null;
+      moodScore: number | null;
     }
   | { ok: false; message: string } {
   const domain = existingDomain
@@ -207,6 +214,7 @@ function validateEntryBody(
       domain: "reading",
       category: "review",
       mood: null,
+      moodScore: null,
       pnlDay: null,
       pnlTotal: null,
       marketSnapshot: null,
@@ -232,6 +240,9 @@ function validateEntryBody(
   const locationCheck = assertLocationForDomain(domain, normalized.location);
   if (!locationCheck.ok) return locationCheck;
 
+  const moodScoreCheck = assertMoodScoreForDomain(domain, normalized.moodScore);
+  if (!moodScoreCheck.ok) return moodScoreCheck;
+
   const books =
     domain === "reading" ? normalizeBooks(normalized.books ?? []) : [];
 
@@ -242,6 +253,7 @@ function validateEntryBody(
     tag: tagCheck.tag,
     books,
     location: (locationCheck.location ?? null) as Prisma.InputJsonValue | null,
+    moodScore: moodScoreCheck.moodScore,
   };
 }
 
@@ -251,7 +263,8 @@ function buildEntryWriteData(
   content: Prisma.InputJsonValue,
   stocks: Array<{ code: string; name: string }>,
   tag: string | null,
-  location: Prisma.InputJsonValue | null
+  location: Prisma.InputJsonValue | null,
+  moodScore: number | null
 ) {
   const title = data.title.trim();
   return {
@@ -265,6 +278,7 @@ function buildEntryWriteData(
     pnlDay: domain === "stock" ? toNum(data.pnlDay) : null,
     pnlTotal: domain === "stock" ? toNum(data.pnlTotal) : null,
     mood: domain === "reading" ? null : (data.mood ?? null),
+    moodScore: domain === "reading" ? null : moodScore,
     marketSnapshot:
       domain === "stock" && data.marketSnapshot != null
         ? data.marketSnapshot
@@ -471,7 +485,8 @@ export async function entryRoutes(app: FastifyInstance) {
       content,
       stocks,
       validated.tag,
-      validated.location
+      validated.location,
+      validated.moodScore
     );
     const entry = await prisma.diaryEntry.create({
       data: {
@@ -486,6 +501,7 @@ export async function entryRoutes(app: FastifyInstance) {
         pnlDay: write.pnlDay,
         pnlTotal: write.pnlTotal,
         mood: write.mood,
+        moodScore: write.moodScore,
         content: write.content,
         marketSnapshot: write.marketSnapshot ?? undefined,
         stocks: { create: stocks },
@@ -556,6 +572,10 @@ export async function entryRoutes(app: FastifyInstance) {
             : Number(existing.pnlTotal),
       mood:
         parsed.data.mood !== undefined ? parsed.data.mood : existing.mood,
+      moodScore:
+        parsed.data.moodScore !== undefined
+          ? parsed.data.moodScore
+          : existing.moodScore,
       tag: parsed.data.tag !== undefined ? parsed.data.tag : existing.tag,
       location:
         parsed.data.location !== undefined
@@ -590,7 +610,8 @@ export async function entryRoutes(app: FastifyInstance) {
       content,
       stocks,
       validated.tag,
-      validated.location
+      validated.location,
+      validated.moodScore
     );
     const entry = await prisma.$transaction(async (tx) => {
       await tx.diaryStock.deleteMany({ where: { entryId: id } });
@@ -607,6 +628,7 @@ export async function entryRoutes(app: FastifyInstance) {
           pnlDay: write.pnlDay,
           pnlTotal: write.pnlTotal,
           mood: write.mood,
+          moodScore: write.moodScore,
           marketSnapshot: write.marketSnapshot ?? null,
           content: write.content,
           ...(stocks.length > 0 ? { stocks: { create: stocks } } : {}),

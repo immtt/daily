@@ -10,7 +10,7 @@ type Props = {
 };
 
 export function LifeGate({ children, enabled = true }: Props) {
-  const [unlocked, setUnlocked] = useState(isLifeUnlocked);
+  const [unlocked, setUnlocked] = useState(() => isLifeUnlocked());
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -43,7 +43,9 @@ export function LifeGate({ children, enabled = true }: Props) {
       <main className="app-main">
         <div className="life-gate-card">
           <h2 className="life-gate-title">进入生活栏目</h2>
-          <p className="muted life-gate-hint">此栏目需要单独密码访问</p>
+          <p className="muted life-gate-hint">
+            此栏目需要单独密码；离开后再进入需重新输入
+          </p>
           <form onSubmit={onSubmit} className="life-gate-form">
             <label className="field">
               访问密码

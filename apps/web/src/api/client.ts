@@ -58,6 +58,7 @@ export type DiaryEntry = {
   pnlDay: number | null;
   pnlTotal: number | null;
   mood: string | null;
+  moodScore?: number | null;
   marketSnapshot?: MarketSnapshot | null;
   content?: unknown;
   createdAt: string;

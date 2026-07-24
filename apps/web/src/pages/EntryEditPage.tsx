@@ -7,6 +7,7 @@ import { LocationField } from "../components/LocationField";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
 import { MoodFace } from "../components/MoodFace";
+import { MoodScoreInput } from "../components/MoodScore";
 import {
   ENTRY_CATEGORIES,
   MOODS,
@@ -46,6 +47,7 @@ export function EntryEditPage({ domain }: Props) {
   const [pnlDay, setPnlDay] = useState("");
   const [pnlTotal, setPnlTotal] = useState("");
   const [mood, setMood] = useState<string | null>(null);
+  const [moodScore, setMoodScore] = useState("");
   const [tag, setTag] = useState<EntryTagId | "">("");
   const [books, setBooks] = useState<string[]>([]);
   const [location, setLocation] = useState<EntryLocation | null>(null);
@@ -77,6 +79,7 @@ export function EntryEditPage({ domain }: Props) {
         setPnlDay(e.pnlDay == null ? "" : String(e.pnlDay));
         setPnlTotal(e.pnlTotal == null ? "" : String(e.pnlTotal));
         setMood(e.mood);
+        setMoodScore(e.moodScore == null ? "" : String(e.moodScore));
         setTag((e.tag as EntryTagId) || "");
         setBooks((e.books ?? []).map((b) => b.title));
         setLocation((e.location as EntryLocation) ?? null);
@@ -99,6 +102,13 @@ export function EntryEditPage({ domain }: Props) {
     if ((isReading || isLife) && !tag) {
       setError("请选择标签");
       return;
+    }
+    if (moodScore !== "") {
+      const n = Number(moodScore);
+      if (!Number.isInteger(n) || n < 0 || n > 100) {
+        setError("情绪值须为 0–100 的整数");
+        return;
+      }
     }
     setSaving(true);
     setError("");
@@ -126,10 +136,12 @@ export function EntryEditPage({ domain }: Props) {
         body.pnlDay = pnlDay === "" ? null : Number(pnlDay);
         body.pnlTotal = pnlTotal === "" ? null : Number(pnlTotal);
         body.mood = mood;
+        body.moodScore = moodScore === "" ? null : Number(moodScore);
         body.marketSnapshot = marketSnapshot;
         body.stocks = stocks;
       } else if (isLife) {
         body.mood = mood;
+        body.moodScore = moodScore === "" ? null : Number(moodScore);
         body.tag = tag;
         body.location = location;
         body.stocks = [];
@@ -286,7 +298,7 @@ export function EntryEditPage({ domain }: Props) {
 
         {(isStock || isLife) && (
           <div className="field">
-            <span>情绪</span>
+            <span>情绪表情（可选）</span>
             <div className="mood-row">
               {MOODS.map((m) => (
                 <button
@@ -302,6 +314,10 @@ export function EntryEditPage({ domain }: Props) {
               ))}
             </div>
           </div>
+        )}
+
+        {(isStock || isLife) && (
+          <MoodScoreInput value={moodScore} onChange={setMoodScore} />
         )}
 
         {isLife && (

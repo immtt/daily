@@ -12,6 +12,7 @@ import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { LifeGate } from "../components/LifeGate";
 import { MoodFace } from "../components/MoodFace";
+import { MoodScoreBadge } from "../components/MoodScore";
 import { tagLabel } from "../lib/entryTags";
 import { isLifeUnlocked } from "../lib/lifeAccess";
 import { BookTagRow } from "../components/BookTagInput";
@@ -175,7 +176,10 @@ export function TrashListPage() {
                           <span className={pnlClass(e.pnlDay)}>
                             当日 {formatPnl(e.pnlDay)}
                           </span>
-                          <MoodFace id={e.mood} size={24} />
+                          <span className="entry-mood-group">
+                            <MoodFace id={e.mood} size={24} />
+                            <MoodScoreBadge score={e.moodScore} compact />
+                          </span>
                         </div>
                         <StockTagRow stocks={e.stocks} compact max={3} />
                       </>
@@ -184,7 +188,10 @@ export function TrashListPage() {
                         <div className="entry-meta entry-meta--slot">
                           {entryDomain === "life" ? (
                             <>
-                              <MoodFace id={e.mood} size={24} />
+                              <span className="entry-mood-group">
+                                <MoodFace id={e.mood} size={24} />
+                                <MoodScoreBadge score={e.moodScore} compact />
+                              </span>
                               {e.location && (
                                 <LocationChip location={e.location as EntryLocation} />
                               )}

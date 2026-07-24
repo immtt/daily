@@ -7,6 +7,7 @@ import { isLifeUnlocked } from "../lib/lifeAccess";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
+import { MoodScoreBadge } from "../components/MoodScore";
 import { BookTagRow } from "../components/BookTagInput";
 import { LocationChip } from "../components/LocationField";
 import type { EntryLocation } from "../api/client";
@@ -153,7 +154,14 @@ export function SimpleEntryListPage({
                         </span>
                       )}
                     </div>
-                    {showMood ? <MoodFace id={e.mood} size={26} /> : <span />}
+                    {showMood ? (
+                      <span className="entry-mood-group">
+                        <MoodFace id={e.mood} size={26} />
+                        <MoodScoreBadge score={e.moodScore} compact />
+                      </span>
+                    ) : (
+                      <span />
+                    )}
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
                   {domain === "reading" && (e.books?.length ?? 0) > 0 && (

@@ -12,6 +12,7 @@ import { EntryDetailPage } from "./pages/EntryDetailPage";
 import { TrashListPage } from "./pages/TrashListPage";
 import { TrashDetailPage } from "./pages/TrashDetailPage";
 import { LifeGate } from "./components/LifeGate";
+import { LifeAccessWatcher } from "./components/LifeAccessWatcher";
 
 function Private({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -54,7 +55,9 @@ function LifePrivate({ children }: { children: ReactNode }) {
 
 export function App() {
   return (
-    <Routes>
+    <>
+      <LifeAccessWatcher />
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/"
@@ -131,5 +134,6 @@ export function App() {
       <Route path="/entries/*" element={<LegacyEntryRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

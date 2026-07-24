@@ -17,6 +17,7 @@ import {
 import { tagLabel } from "../lib/entryTags";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
+import { MoodScoreBadge } from "../components/MoodScore";
 import { ProseGallery } from "../components/ProseGallery";
 
 type Props = {
@@ -181,7 +182,12 @@ export function EntryDetailPage({ domain }: Props) {
         </div>
         <h1 className="entry-title lg">
           <span>{entry.title}</span>
-          {(isStock || domain === "life") && <MoodFace id={entry.mood} size={32} />}
+          {(isStock || domain === "life") && (
+            <span className="detail-mood-group">
+              <MoodFace id={entry.mood} size={32} />
+              <MoodScoreBadge score={entry.moodScore} />
+            </span>
+          )}
         </h1>
         {isStock && entry.category !== "mindset" && (
           <div className="entry-meta">

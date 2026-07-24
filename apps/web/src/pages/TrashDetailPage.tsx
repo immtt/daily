@@ -15,6 +15,7 @@ import {
 } from "../lib/domain";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
+import { MoodScoreBadge } from "../components/MoodScore";
 import { ProseGallery } from "../components/ProseGallery";
 import { LifeGate } from "../components/LifeGate";
 import { tagLabel } from "../lib/entryTags";
@@ -174,7 +175,10 @@ export function TrashDetailPage() {
         <h1 className="entry-title lg">
           <span>{entry.title}</span>
           {(isStock || entryDomain === "life") && (
-            <MoodFace id={entry.mood} size={32} />
+            <span className="detail-mood-group">
+              <MoodFace id={entry.mood} size={32} />
+              <MoodScoreBadge score={entry.moodScore} />
+            </span>
           )}
         </h1>
         {isStock && (

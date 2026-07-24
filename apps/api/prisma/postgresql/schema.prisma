@@ -60,6 +60,8 @@ model DiaryEntry {
   pnlDay         Decimal?  @map("pnl_day") @db.Decimal(12, 2)
   pnlTotal       Decimal?  @map("pnl_total") @db.Decimal(12, 2)
   mood           String?   @db.VarChar(20)
+  /// 情绪值 0-100，stock/life 可选
+  moodScore      Int?      @map("mood_score") @db.SmallInt
   /// life 域可选位置 { lat, lng, label?, capturedAt? }
   location       Json?
   marketSnapshot Json?     @map("market_snapshot")

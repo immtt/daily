@@ -11,6 +11,7 @@ import { domainNewPath } from "../lib/domain";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
+import { MoodScoreBadge } from "../components/MoodScore";
 import { StockTagRow } from "../components/ProseGallery";
 
 type CategoryFilter = "" | EntryCategory;
@@ -152,7 +153,10 @@ export function StockListPage() {
                         {categoryLabel(e.category)}
                       </span>
                     </div>
-                    <MoodFace id={e.mood} size={26} />
+                    <span className="entry-mood-group">
+                      <MoodFace id={e.mood} size={26} />
+                      <MoodScoreBadge score={e.moodScore} compact />
+                    </span>
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
                   {e.category !== "mindset" ? (
