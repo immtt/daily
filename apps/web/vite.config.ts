@@ -13,7 +13,7 @@ export default defineConfig({
         short_name: "增长日记",
         description: "记录股票、读书与生活的增长日记",
         theme_color: "#0f1218",
-        background_color: "#ffffff",
+        background_color: "#f7f8fa",
         display: "standalone",
         start_url: "/",
         icons: [
