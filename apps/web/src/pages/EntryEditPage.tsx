@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, type DiaryEntry, type EntryLocation, type MarketSnapshot } from "../api/client";
+import { api, type DiaryEntry, type MarketSnapshot } from "../api/client";
 import { DiaryEditor, extractCodesFromContent } from "../components/DiaryEditor";
 import { BookTagInput } from "../components/BookTagInput";
-import { LocationField } from "../components/LocationField";
+import { CityTagInput } from "../components/CityTagInput";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
 import { MoodFace } from "../components/MoodFace";
@@ -30,6 +30,25 @@ type Props = {
   domain: EntryDomain;
 };
 
+function EntryDateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <label className="field field--date">
+      日期
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
 export function EntryEditPage({ domain }: Props) {
   const { id } = useParams();
   const isNew = !id || id === "new";
@@ -50,7 +69,7 @@ export function EntryEditPage({ domain }: Props) {
   const [moodScore, setMoodScore] = useState("");
   const [tag, setTag] = useState<EntryTagId | "">("");
   const [books, setBooks] = useState<string[]>([]);
-  const [location, setLocation] = useState<EntryLocation | null>(null);
+  const [cities, setCities] = useState<string[]>([]);
   const [content, setContent] = useState<unknown>({
     type: "doc",
     content: [{ type: "paragraph" }],
@@ -82,7 +101,7 @@ export function EntryEditPage({ domain }: Props) {
         setMoodScore(e.moodScore == null ? "" : String(e.moodScore));
         setTag((e.tag as EntryTagId) || "");
         setBooks((e.books ?? []).map((b) => b.title));
-        setLocation((e.location as EntryLocation) ?? null);
+        setCities((e.cities ?? []).map((c) => c.city));
         setContent(e.content ?? { type: "doc", content: [] });
         setMarketSnapshot((e.marketSnapshot as MarketSnapshot) || null);
       })
@@ -143,7 +162,7 @@ export function EntryEditPage({ domain }: Props) {
         body.mood = mood;
         body.moodScore = moodScore === "" ? null : Number(moodScore);
         body.tag = tag;
-        body.location = location;
+        body.cities = cities.map((city) => ({ city }));
         body.stocks = [];
       } else {
         body.tag = tag;
@@ -254,22 +273,25 @@ export function EntryEditPage({ domain }: Props) {
           />
         </label>
 
-        {isReading && (
-          <div className="field">
-            <span>书名</span>
-            <p className="muted tiny field-hint">可添加多本书，类似股票标签</p>
-            <BookTagInput value={books} onChange={setBooks} />
+        {isReading ? (
+          <div className="field-row field-row--tag-date">
+            <div className="field">
+              <span>书名</span>
+              <BookTagInput value={books} onChange={setBooks} />
+            </div>
+            <EntryDateField value={entryDate} onChange={setEntryDate} />
           </div>
+        ) : isLife ? (
+          <div className="field-row field-row--tag-date">
+            <div className="field">
+              <span>城市（可选）</span>
+              <CityTagInput value={cities} onChange={setCities} />
+            </div>
+            <EntryDateField value={entryDate} onChange={setEntryDate} />
+          </div>
+        ) : (
+          <EntryDateField value={entryDate} onChange={setEntryDate} />
         )}
-
-        <label className="field">
-          日期
-          <input
-            type="date"
-            value={entryDate}
-            onChange={(e) => setEntryDate(e.target.value)}
-          />
-        </label>
 
         {isStock && category === "review" && (
           <div className="field-row">
@@ -297,33 +319,29 @@ export function EntryEditPage({ domain }: Props) {
         )}
 
         {(isStock || isLife) && (
-          <div className="field">
-            <span>情绪表情（可选）</span>
-            <div className="mood-row">
-              {MOODS.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={`mood-btn ${mood === m.id ? "active" : ""}`}
-                  onClick={() => setMood(mood === m.id ? null : m.id)}
-                  title={m.label}
-                  aria-label={m.label}
-                >
-                  <MoodFace id={m.id} size={28} />
-                </button>
-              ))}
+          <div className="field-row field-row--mood">
+            <div className="field">
+              <span>情绪（可选）</span>
+              <div className="mood-row">
+                {MOODS.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`mood-btn ${mood === m.id ? "active" : ""}`}
+                    onClick={() => setMood(mood === m.id ? null : m.id)}
+                    title={m.label}
+                    aria-label={m.label}
+                  >
+                    <MoodFace id={m.id} size={28} />
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        {(isStock || isLife) && (
-          <MoodScoreInput value={moodScore} onChange={setMoodScore} />
-        )}
-
-        {isLife && (
-          <div className="field">
-            <span>位置（可选）</span>
-            <LocationField value={location} onChange={setLocation} />
+            <MoodScoreInput
+              value={moodScore}
+              onChange={setMoodScore}
+              inline
+            />
           </div>
         )}
 

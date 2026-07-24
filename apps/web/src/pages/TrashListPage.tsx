@@ -17,8 +17,7 @@ import { MoodScoreBadge } from "../components/MoodScore";
 import { tagLabel } from "../lib/entryTags";
 import { isLifeUnlocked } from "../lib/lifeAccess";
 import { BookTagRow } from "../components/BookTagInput";
-import { LocationChip } from "../components/LocationField";
-import type { EntryLocation } from "../api/client";
+import { CityTagRow } from "../components/CityTagInput";
 import { StockTagRow } from "../components/ProseGallery";
 
 type DomainFilter = "" | EntryDomain;
@@ -189,8 +188,8 @@ export function TrashListPage() {
                                 <MoodFace id={e.mood} size={24} />
                                 <MoodScoreBadge score={e.moodScore} compact />
                               </span>
-                              {e.location && (
-                                <LocationChip location={e.location as EntryLocation} />
+                              {(e.cities?.length ?? 0) > 0 && (
+                                <CityTagRow cities={e.cities ?? []} />
                               )}
                             </>
                           ) : null}

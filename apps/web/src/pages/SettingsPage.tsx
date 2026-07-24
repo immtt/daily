@@ -4,6 +4,12 @@ import { api } from "../api/client";
 import { AppHeader } from "../components/AppHeader";
 import { useAuth } from "../hooks/useAuth";
 import { lockLife } from "../lib/lifeAccess";
+import {
+  applyPwaPrefs,
+  readPwaPrefs,
+  writePwaPrefs,
+} from "../lib/pwaPrefs";
+import { THEMES, type ThemeId } from "../lib/themes";
 
 export function SettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -24,6 +30,17 @@ export function SettingsPage() {
   const [lifeMsg, setLifeMsg] = useState("");
   const [lifeErr, setLifeErr] = useState("");
   const [lifeSaving, setLifeSaving] = useState(false);
+
+  const [pwaIconPreset, setPwaIconPreset] = useState<ThemeId>(
+    () => readPwaPrefs().iconPreset
+  );
+
+  function onSelectPwaIcon(id: ThemeId) {
+    setPwaIconPreset(id);
+    const prefs = { iconPreset: id };
+    writePwaPrefs(prefs);
+    applyPwaPrefs(prefs);
+  }
 
   async function onChangeLoginPassword(e: FormEvent) {
     e.preventDefault();
@@ -312,6 +329,32 @@ export function SettingsPage() {
               )}
             </>
           )}
+        </section>
+
+        <section className="settings-card">
+          <h2 className="settings-title">桌面图标 / 主题色</h2>
+          <p className="muted settings-desc">
+            桌面图标为固定熊猫样式；此处选择地址栏 / 浏览器主题色。
+            若已添加过桌面快捷方式，iOS 需删除后重新添加才能更新图标。
+          </p>
+          <div className="theme-grid">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`theme-option ${pwaIconPreset === t.id ? "active" : ""}`}
+                onClick={() => onSelectPwaIcon(t.id)}
+                aria-pressed={pwaIconPreset === t.id}
+              >
+                <span
+                  className="theme-swatch"
+                  style={{ background: t.swatch }}
+                  aria-hidden
+                />
+                <span className="theme-name">{t.name}</span>
+              </button>
+            ))}
+          </div>
         </section>
       </main>
     </div>

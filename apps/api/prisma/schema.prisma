@@ -65,8 +65,6 @@ model DiaryEntry {
   mood           String?
   /// 情绪值 0-100，stock/life 可选
   moodScore      Int?      @map("mood_score")
-  /// life 域可选位置 { lat, lng, label?, capturedAt? }
-  location       Json?
   marketSnapshot Json?     @map("market_snapshot")
   content        Json
   deletedAt      DateTime? @map("deleted_at")
@@ -75,6 +73,7 @@ model DiaryEntry {
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stocks         DiaryStock[]
   books          DiaryBook[]
+  cities         DiaryCity[]
 
   @@index([userId, entryDate], map: "idx_diary_entries_user_date")
   @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
@@ -106,6 +105,17 @@ model DiaryBook {
   @@index([entryId], map: "idx_diary_books_entry")
   @@index([title], map: "idx_diary_books_title")
   @@map("diary_books")
+}
+
+model DiaryCity {
+  id      String     @id @default(uuid())
+  entryId String     @map("entry_id")
+  city    String
+  entry   DiaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId], map: "idx_diary_cities_entry")
+  @@index([city], map: "idx_diary_cities_city")
+  @@map("diary_cities")
 }
 
 /// 大盘每日收盘快照（仅完整收盘可入库；盘中数据不入库）

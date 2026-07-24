@@ -11,7 +11,7 @@ import {
   userLifeAccessRequired,
 } from "../lib/lifeAccess.js";
 import { normalizeBooks } from "../lib/entryBooks.js";
-import { assertLocationForDomain, locationSchema } from "../lib/entryLocation.js";
+import { assertCitiesForDomain } from "../lib/entryCities.js";
 import { assertMoodScoreForDomain } from "../lib/entryMood.js";
 import { Prisma } from "@prisma/client";
 
@@ -22,6 +22,10 @@ const stockSchema = z.object({
 
 const bookSchema = z.object({
   title: z.string().min(1).max(128),
+});
+
+const citySchema = z.object({
+  city: z.string().min(1).max(64),
 });
 
 const categorySchema = z.enum(["review", "mindset"]);
@@ -41,12 +45,12 @@ const entryBodySchema = z.object({
     .optional(),
   tag: z.string().max(32).nullable().optional(),
   books: z.array(bookSchema).optional().default([]),
-  location: locationSchema.optional(),
+  cities: z.array(citySchema).optional().default([]),
   marketSnapshot: z.any().nullable().optional(),
   content: z.any().optional().default({ type: "doc", content: [] }),
 });
 
-const entryInclude = { stocks: true, books: true } as const;
+const entryInclude = { stocks: true, books: true, cities: true } as const;
 
 const activeOnly = { deletedAt: null } as const;
 
@@ -109,7 +113,6 @@ function serializeEntry(
     domain: string;
     category: string;
     tag?: string | null;
-    location?: Prisma.JsonValue | null;
     pinned?: boolean;
     pinnedAt?: Date | null;
     pnlDay: Prisma.Decimal | null;
@@ -123,6 +126,7 @@ function serializeEntry(
     updatedAt: Date;
     stocks: Array<{ code: string; name: string }>;
     books?: Array<{ title: string }>;
+    cities?: Array<{ city: string }>;
   },
   withContent = false
 ) {
@@ -135,7 +139,7 @@ function serializeEntry(
     category: e.category === "mindset" ? "mindset" : "review",
     tag: e.tag ?? null,
     books: (e.books ?? []).map((b) => ({ title: b.title })),
-    location: e.location ?? null,
+    cities: (e.cities ?? []).map((c) => ({ city: c.city })),
     pinned: Boolean(e.pinned),
     pinnedAt: e.pinnedAt ? e.pinnedAt.toISOString() : null,
     stocks: e.stocks.map((s) => ({ code: s.code, name: s.name })),
@@ -196,7 +200,7 @@ function validateEntryBody(
       data: ParsedEntryBody;
       tag: string | null;
       books: Array<{ title: string }>;
-      location: Prisma.InputJsonValue | null;
+      cities: Array<{ city: string }>;
       moodScore: number | null;
     }
   | { ok: false; message: string } {
@@ -216,7 +220,7 @@ function validateEntryBody(
       category: data.category,
       tag: null,
       books: [],
-      location: null,
+      cities: [],
     };
   } else if (domain === "reading") {
     normalized = {
@@ -229,7 +233,7 @@ function validateEntryBody(
       pnlTotal: null,
       marketSnapshot: null,
       stocks: [],
-      location: null,
+      cities: [],
     };
   } else {
     normalized = {
@@ -247,8 +251,8 @@ function validateEntryBody(
   const tagCheck = assertTagForDomain(domain, normalized.tag);
   if (!tagCheck.ok) return tagCheck;
 
-  const locationCheck = assertLocationForDomain(domain, normalized.location);
-  if (!locationCheck.ok) return locationCheck;
+  const citiesCheck = assertCitiesForDomain(domain, normalized.cities);
+  if (!citiesCheck.ok) return citiesCheck;
 
   const moodScoreCheck = assertMoodScoreForDomain(domain, normalized.moodScore);
   if (!moodScoreCheck.ok) return moodScoreCheck;
@@ -262,7 +266,7 @@ function validateEntryBody(
     data: normalized,
     tag: tagCheck.tag,
     books,
-    location: (locationCheck.location ?? null) as Prisma.InputJsonValue | null,
+    cities: citiesCheck.cities,
     moodScore: moodScoreCheck.moodScore,
   };
 }
@@ -273,7 +277,6 @@ function buildEntryWriteData(
   content: Prisma.InputJsonValue,
   stocks: Array<{ code: string; name: string }>,
   tag: string | null,
-  location: Prisma.InputJsonValue | null,
   moodScore: number | null
 ) {
   const title = data.title.trim();
@@ -283,7 +286,6 @@ function buildEntryWriteData(
     domain,
     category: domain === "stock" ? data.category! : "review",
     tag,
-    location,
     searchText: buildSearchText(title, content),
     pnlDay: domain === "stock" ? toNum(data.pnlDay) : null,
     pnlTotal: domain === "stock" ? toNum(data.pnlTotal) : null,
@@ -445,8 +447,11 @@ export async function entryRoutes(app: FastifyInstance) {
         where.books = { some: { title: { contains: q.bookTitle.trim() } } };
       }
       if (keyword) where.searchText = { contains: keyword };
-    } else if (keyword) {
-      where.searchText = { contains: keyword };
+    } else {
+      if (q.city?.trim()) {
+        where.cities = { some: { city: { contains: q.city.trim() } } };
+      }
+      if (keyword) where.searchText = { contains: keyword };
     }
     if (q.tag) where.tag = q.tag;
 
@@ -501,7 +506,6 @@ export async function entryRoutes(app: FastifyInstance) {
       content,
       stocks,
       validated.tag,
-      validated.location,
       validated.moodScore
     );
     const entry = await prisma.diaryEntry.create({
@@ -512,7 +516,6 @@ export async function entryRoutes(app: FastifyInstance) {
         domain: write.domain,
         category: write.category,
         tag: write.tag,
-        location: toPrismaJsonField(write.location),
         searchText: write.searchText,
         pnlDay: write.pnlDay,
         pnlTotal: write.pnlTotal,
@@ -523,6 +526,9 @@ export async function entryRoutes(app: FastifyInstance) {
         stocks: { create: stocks },
         ...(validated.books.length > 0
           ? { books: { create: validated.books } }
+          : {}),
+        ...(validated.cities.length > 0
+          ? { cities: { create: validated.cities } }
           : {}),
       },
       include: entryInclude,
@@ -574,6 +580,10 @@ export async function entryRoutes(app: FastifyInstance) {
         parsed.data.books !== undefined
           ? parsed.data.books
           : existing.books.map((b) => ({ title: b.title })),
+      cities:
+        parsed.data.cities !== undefined
+          ? parsed.data.cities
+          : existing.cities.map((c) => ({ city: c.city })),
       pnlDay:
         parsed.data.pnlDay !== undefined
           ? parsed.data.pnlDay
@@ -593,10 +603,6 @@ export async function entryRoutes(app: FastifyInstance) {
           ? parsed.data.moodScore
           : existing.moodScore,
       tag: parsed.data.tag !== undefined ? parsed.data.tag : existing.tag,
-      location:
-        parsed.data.location !== undefined
-          ? parsed.data.location
-          : (existing.location as ParsedEntryBody["location"]),
       marketSnapshot:
         parsed.data.marketSnapshot !== undefined
           ? parsed.data.marketSnapshot
@@ -626,12 +632,12 @@ export async function entryRoutes(app: FastifyInstance) {
       content,
       stocks,
       validated.tag,
-      validated.location,
       validated.moodScore
     );
     const entry = await prisma.$transaction(async (tx) => {
       await tx.diaryStock.deleteMany({ where: { entryId: id } });
       await tx.diaryBook.deleteMany({ where: { entryId: id } });
+      await tx.diaryCity.deleteMany({ where: { entryId: id } });
       return tx.diaryEntry.update({
         where: { id },
         data: {
@@ -639,7 +645,6 @@ export async function entryRoutes(app: FastifyInstance) {
           entryDate: write.entryDate,
           category: write.category,
           tag: write.tag,
-          location: toPrismaJsonField(write.location),
           searchText: write.searchText,
           pnlDay: write.pnlDay,
           pnlTotal: write.pnlTotal,
@@ -650,6 +655,9 @@ export async function entryRoutes(app: FastifyInstance) {
           ...(stocks.length > 0 ? { stocks: { create: stocks } } : {}),
           ...(validated.books.length > 0
             ? { books: { create: validated.books } }
+            : {}),
+          ...(validated.cities.length > 0
+            ? { cities: { create: validated.cities } }
             : {}),
         },
         include: entryInclude,

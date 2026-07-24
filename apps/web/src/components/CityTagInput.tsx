@@ -6,16 +6,16 @@ type Props = {
   placeholder?: string;
 };
 
-function normalizeTitles(titles: string[]) {
+function normalizeCities(cities: string[]) {
   const seen = new Set<string>();
   const result: string[] = [];
-  for (const raw of titles) {
-    const title = raw.trim();
-    if (!title) continue;
-    const key = title.toLowerCase();
+  for (const raw of cities) {
+    const city = raw.trim();
+    if (!city) continue;
+    const key = city.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push(title.slice(0, 128));
+    result.push(city.slice(0, 64));
   }
   return result;
 }
@@ -27,10 +27,10 @@ function splitDraft(raw: string) {
     .filter(Boolean);
 }
 
-export function BookTagInput({
+export function CityTagInput({
   value,
   onChange,
-  placeholder = "输入书名，回车或逗号添加",
+  placeholder = "输入城市，回车或逗号添加",
 }: Props) {
   const [draft, setDraft] = useState("");
 
@@ -38,9 +38,9 @@ export function BookTagInput({
     const parts = splitDraft(raw);
     if (parts.length === 0) return;
     onChange(
-      normalizeTitles([
+      normalizeCities([
         ...value,
-        ...parts.map((p) => p.slice(0, 128)),
+        ...parts.map((p) => p.slice(0, 64)),
       ])
     );
     setDraft("");
@@ -62,16 +62,16 @@ export function BookTagInput({
   }
 
   return (
-    <div className="book-tag-input">
+    <div className="city-tag-input">
       {value.length > 0 && (
         <div className="stock-tags">
-          {value.map((title, i) => (
-            <span key={`${title}-${i}`} className="book-tag">
-              {title}
+          {value.map((city, i) => (
+            <span key={`${city}-${i}`} className="city-tag">
+              {city}
               <button
                 type="button"
-                className="book-tag-remove"
-                aria-label={`移除 ${title}`}
+                className="city-tag-remove"
+                aria-label={`移除 ${city}`}
                 onClick={() => removeAt(i)}
               >
                 ×
@@ -94,34 +94,34 @@ export function BookTagInput({
         onKeyDown={onKeyDown}
         onBlur={() => commitDraft(draft)}
         placeholder={placeholder}
-        maxLength={128}
+        maxLength={64}
       />
     </div>
   );
 }
 
-export function BookTagRow({
-  books,
+export function CityTagRow({
+  cities,
   compact = true,
   max = 3,
 }: {
-  books: Array<{ title: string }>;
+  cities: Array<{ city: string }>;
   compact?: boolean;
   max?: number;
 }) {
-  if (!books.length) {
+  if (!cities.length) {
     return compact ? <div className="stock-tags stock-tags--slot" /> : null;
   }
-  const shown = compact ? books.slice(0, max) : books;
-  const more = compact ? Math.max(0, books.length - max) : 0;
+  const shown = compact ? cities.slice(0, max) : cities;
+  const more = compact ? Math.max(0, cities.length - max) : 0;
   return (
     <div className={`stock-tags ${compact ? "stock-tags--slot" : ""}`}>
-      {shown.map((b) => (
-        <span key={b.title} className="book-tag" title={b.title}>
-          {b.title}
+      {shown.map((c) => (
+        <span key={c.city} className="city-tag" title={c.city}>
+          {c.city}
         </span>
       ))}
-      {more > 0 && <span className="book-tag book-tag--more">+{more}</span>}
+      {more > 0 && <span className="city-tag city-tag--more">+{more}</span>}
     </div>
   );
 }

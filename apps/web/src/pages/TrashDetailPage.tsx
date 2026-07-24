@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, type DiaryEntry, type EntryLocation } from "../api/client";
+import { api, type DiaryEntry } from "../api/client";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
 import { BookTagRow } from "../components/BookTagInput";
-import { LocationChip } from "../components/LocationField";
+import { CityTagRow } from "../components/CityTagInput";
 import { enrichContentStocks } from "../lib/stockText";
 import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
 import {
@@ -196,9 +196,9 @@ export function TrashDetailPage() {
           <BookTagRow books={entry.books ?? []} compact={false} />
         )}
 
-        {entryDomain === "life" && entry.location && (
-          <div className="detail-location-row">
-            <LocationChip location={entry.location as EntryLocation} />
+        {entryDomain === "life" && (entry.cities?.length ?? 0) > 0 && (
+          <div className="detail-city-row">
+            <CityTagRow cities={entry.cities ?? []} compact={false} />
           </div>
         )}
 

@@ -7,13 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.svg", "pwa-192.png", "pwa-512.png", "pwa-icons/*"],
       manifest: {
         name: "增长日记",
         short_name: "增长日记",
         description: "记录股票、读书与生活的增长日记",
-        theme_color: "#c41e3a",
-        background_color: "#fff9f5",
+        theme_color: "#0f1218",
+        background_color: "#ffffff",
         display: "standalone",
         start_url: "/",
         icons: [

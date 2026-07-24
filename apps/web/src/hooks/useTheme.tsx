@@ -11,7 +11,6 @@ import {
   DEFAULT_THEME,
   isThemeId,
   THEME_STORAGE_KEY,
-  THEMES,
   type ThemeId,
 } from "../lib/themes";
 
@@ -34,9 +33,6 @@ function readStoredTheme(): ThemeId {
 
 function applyTheme(id: ThemeId) {
   document.documentElement.dataset.theme = id;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  const def = THEMES.find((t) => t.id === id);
-  if (meta && def) meta.setAttribute("content", def.themeColor);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

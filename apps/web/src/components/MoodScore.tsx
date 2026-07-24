@@ -18,12 +18,14 @@ export function MoodScoreBadge({ score, compact = false }: Props) {
 export function MoodScoreInput({
   value,
   onChange,
+  inline = false,
 }: {
   value: string;
   onChange: (next: string) => void;
+  inline?: boolean;
 }) {
   return (
-    <label className="field mood-score-field">
+    <label className={`field mood-score-field ${inline ? "mood-score-field--inline" : ""}`}>
       情绪值
       <div className="mood-score-input-row">
         <input
@@ -35,7 +37,7 @@ export function MoodScoreInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder="0–100，可选"
         />
-        <span className="muted tiny">0 最低，100 最高</span>
+        {!inline && <span className="muted tiny">0 最低，100 最高</span>}
       </div>
     </label>
   );

@@ -11,8 +11,7 @@ import { ListFabStack } from "../components/ListFabStack";
 import { MoodFace } from "../components/MoodFace";
 import { MoodScoreBadge } from "../components/MoodScore";
 import { BookTagRow } from "../components/BookTagInput";
-import { LocationChip } from "../components/LocationField";
-import type { EntryLocation } from "../api/client";
+import { CityTagRow } from "../components/CityTagInput";
 
 type SimpleListProps = {
   domain: "reading" | "life";
@@ -171,8 +170,8 @@ export function SimpleEntryListPage({
                     <BookTagRow books={e.books ?? []} />
                   )}
                   <div className="entry-meta entry-meta--slot">
-                    {domain === "life" && e.location && (
-                      <LocationChip location={e.location as EntryLocation} />
+                    {domain === "life" && (e.cities?.length ?? 0) > 0 && (
+                      <CityTagRow cities={e.cities ?? []} />
                     )}
                   </div>
                 </Link>

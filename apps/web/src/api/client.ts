@@ -12,12 +12,7 @@ export type StockRef = { code: string; name: string };
 
 export type BookRef = { title: string };
 
-export type EntryLocation = {
-  lat: number;
-  lng: number;
-  label?: string;
-  capturedAt?: string;
-};
+export type CityRef = { city: string };
 
 export type MarketSnapshot = {
   date: string;
@@ -52,7 +47,7 @@ export type DiaryEntry = {
   category: "review" | "mindset";
   tag?: string | null;
   books?: BookRef[];
-  location?: EntryLocation | null;
+  cities?: CityRef[];
   pinned?: boolean;
   pinnedAt?: string | null;
   stocks: StockRef[];
