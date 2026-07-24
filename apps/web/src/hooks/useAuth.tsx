@@ -8,12 +8,14 @@ import {
   type ReactNode,
 } from "react";
 import { api, getToken, setToken, type User } from "../api/client";
+import { lockLife } from "../lib/lifeAccess";
 
 type AuthCtx = {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<User | null>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -22,18 +24,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refreshUser = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      setLoading(false);
-      return;
+      setUser(null);
+      return null;
     }
-    api
-      .me()
-      .then(setUser)
-      .catch(() => setToken(null))
-      .finally(() => setLoading(false));
+    try {
+      const me = await api.me();
+      setUser(me);
+      return me;
+    } catch {
+      setToken(null);
+      setUser(null);
+      return null;
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshUser().finally(() => setLoading(false));
+  }, [refreshUser]);
 
   const login = useCallback(async (username: string, password: string) => {
     const res = await api.login(username, password);
@@ -44,11 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
+    lockLife();
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, logout }),
-    [user, loading, login, logout]
+    () => ({ user, loading, login, logout, refreshUser }),
+    [user, loading, login, logout, refreshUser]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

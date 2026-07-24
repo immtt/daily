@@ -5,7 +5,11 @@ import { formatDate, parseDateOnly, sendError, toNum, entryIdPath } from "../lib
 import { purgeAt, TRASH_RETENTION_DAYS } from "../services/trash.js";
 import { matchStocksInText, resolveStockFilter } from "../services/stockMatch.js";
 import { buildSearchText } from "../lib/searchText.js";
-import { assertTagForDomain, hasLifeAccess } from "../lib/entryTags.js";
+import { assertTagForDomain } from "../lib/entryTags.js";
+import {
+  userHasLifeAccess,
+  userLifeAccessRequired,
+} from "../lib/lifeAccess.js";
 import { normalizeBooks } from "../lib/entryBooks.js";
 import { assertLocationForDomain, locationSchema } from "../lib/entryLocation.js";
 import { assertMoodScoreForDomain } from "../lib/entryMood.js";
@@ -64,13 +68,19 @@ function normalizeDomain(v: string | null | undefined): "stock" | "reading" | "l
   return "stock";
 }
 
-function requireLifeAccess(
-  req: { headers: Record<string, string | string[] | undefined> },
+async function requireLifeAccess(
+  req: {
+    user: { id: string };
+    headers: Record<string, string | string[] | undefined>;
+  },
   reply: FastifyReply,
   domain: string | null | undefined
 ) {
   if (normalizeDomain(domain) !== "life") return true;
-  if (hasLifeAccess(req.headers["x-life-access"])) return true;
+  if (!(await userLifeAccessRequired(req.user.id))) return true;
+  if (await userHasLifeAccess(req.user.id, req.headers["x-life-access"])) {
+    return true;
+  }
   sendError(reply, 403, "需要生活栏目访问密码", "FORBIDDEN");
   return false;
 }
@@ -303,10 +313,16 @@ export async function entryRoutes(app: FastifyInstance) {
     };
     const domain = parseDomain(q.domain);
     if (domain) {
-      if (!requireLifeAccess(req, reply, domain)) return;
+      if (!(await requireLifeAccess(req, reply, domain))) return;
       where.domain = domain;
-    } else if (!hasLifeAccess(req.headers["x-life-access"])) {
-      where.domain = { not: "life" };
+    } else {
+      const lifeProtected = await userLifeAccessRequired(req.user.id);
+      if (
+        lifeProtected &&
+        !(await userHasLifeAccess(req.user.id, req.headers["x-life-access"]))
+      ) {
+        where.domain = { not: "life" };
+      }
     }
     if (q.tag) where.tag = q.tag;
     const [total, items] = await Promise.all([
@@ -339,7 +355,7 @@ export async function entryRoutes(app: FastifyInstance) {
       include: entryInclude,
     });
     if (!entry) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, entry.domain)) return;
+    if (!(await requireLifeAccess(req, reply, entry.domain))) return;
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },
       true
@@ -352,7 +368,7 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, deletedAt: { not: null } },
     });
     if (!existing) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, existing.domain)) return;
+    if (!(await requireLifeAccess(req, reply, existing.domain))) return;
     const entry = await prisma.diaryEntry.update({
       where: { id },
       data: { deletedAt: null },
@@ -370,7 +386,7 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, deletedAt: { not: null } },
     });
     if (!existing) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, existing.domain)) return;
+    if (!(await requireLifeAccess(req, reply, existing.domain))) return;
     await prisma.diaryEntry.delete({ where: { id } });
     return { ok: true };
   });
@@ -382,7 +398,7 @@ export async function entryRoutes(app: FastifyInstance) {
     if (!domain) {
       return sendError(reply, 400, "请指定 domain：stock / reading / life", "VALIDATION_ERROR");
     }
-    if (!requireLifeAccess(req, reply, domain)) return;
+    if (!(await requireLifeAccess(req, reply, domain))) return;
     const page = Math.max(1, Number(q.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(q.pageSize) || 20));
     const where: Prisma.DiaryEntryWhereInput = {
@@ -472,7 +488,7 @@ export async function entryRoutes(app: FastifyInstance) {
     }
     const data = validated.data;
     const domain = validated.domain;
-    if (!requireLifeAccess(req, reply, domain)) return;
+    if (!(await requireLifeAccess(req, reply, domain))) return;
     const content = (data.content ?? {
       type: "doc",
       content: [],
@@ -526,7 +542,7 @@ export async function entryRoutes(app: FastifyInstance) {
       include: entryInclude,
     });
     if (!entry) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, entry.domain)) return;
+    if (!(await requireLifeAccess(req, reply, entry.domain))) return;
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },
       true
@@ -540,7 +556,7 @@ export async function entryRoutes(app: FastifyInstance) {
       include: entryInclude,
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, existing.domain)) return;
+    if (!(await requireLifeAccess(req, reply, existing.domain))) return;
     const parsed = entryBodySchema.partial().safeParse(req.body);
     if (!parsed.success) {
       return sendError(reply, 400, "参数校验失败", "VALIDATION_ERROR");
@@ -653,7 +669,7 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, ...activeOnly },
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, existing.domain)) return;
+    if (!(await requireLifeAccess(req, reply, existing.domain))) return;
     const pinned =
       typeof body.pinned === "boolean" ? body.pinned : !existing.pinned;
     const entry = await prisma.diaryEntry.update({
@@ -677,7 +693,7 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, ...activeOnly },
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
-    if (!requireLifeAccess(req, reply, existing.domain)) return;
+    if (!(await requireLifeAccess(req, reply, existing.domain))) return;
     const entry = await prisma.diaryEntry.update({
       where: { id },
       data: { deletedAt: new Date() },

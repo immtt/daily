@@ -74,9 +74,21 @@ export function UserMenu() {
             <section className="user-menu-section">
               <h3 className="user-menu-title">账户</h3>
               {user ? (
-                <button type="button" className="user-menu-action" onClick={onLogout}>
-                  退出登录
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="user-menu-action"
+                    onClick={() => {
+                      setOpen(false);
+                      nav("/settings");
+                    }}
+                  >
+                    我的 · 密码设置
+                  </button>
+                  <button type="button" className="user-menu-action" onClick={onLogout}>
+                    退出登录
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"

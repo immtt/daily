@@ -11,6 +11,7 @@ import { EntryEditPage } from "./pages/EntryEditPage";
 import { EntryDetailPage } from "./pages/EntryDetailPage";
 import { TrashListPage } from "./pages/TrashListPage";
 import { TrashDetailPage } from "./pages/TrashDetailPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { LifeGate } from "./components/LifeGate";
 import { LifeAccessWatcher } from "./components/LifeAccessWatcher";
 
@@ -112,6 +113,14 @@ export function App() {
         element={
           <Private>
             <DomainEntryDetail />
+          </Private>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <Private>
+            <SettingsPage />
           </Private>
         }
       />

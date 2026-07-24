@@ -4,6 +4,7 @@ import { api, type DiaryEntry } from "../api/client";
 import { domainNewPath } from "../lib/domain";
 import { tagLabel, tagsForDomain } from "../lib/entryTags";
 import { isLifeUnlocked } from "../lib/lifeAccess";
+import { useAuth } from "../hooks/useAuth";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
@@ -28,6 +29,7 @@ export function SimpleEntryListPage({
   showMood = false,
 }: SimpleListProps) {
   const location = useLocation();
+  const { user } = useAuth();
   const [items, setItems] = useState<DiaryEntry[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -41,7 +43,7 @@ export function SimpleEntryListPage({
     setLoading(true);
     setError("");
     try {
-      if (domain === "life" && !isLifeUnlocked()) {
+      if (domain === "life" && user?.lifeAccessEnabled && !isLifeUnlocked()) {
         setItems([]);
         return;
       }

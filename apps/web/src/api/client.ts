@@ -5,6 +5,7 @@ export type User = {
   username: string;
   role: "admin" | "user";
   status?: string;
+  lifeAccessEnabled?: boolean;
 };
 
 export type StockRef = { code: string; name: string };
@@ -145,6 +146,26 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
   me: () => request<User>("/auth/me"),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: true }>("/auth/password", {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  updateLifeAccess: (body: {
+    enabled: boolean;
+    password?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) =>
+    request<User>("/auth/life-access", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  verifyLifeAccess: (password: string) =>
+    request<{ ok: boolean; required: boolean }>("/auth/life-access/verify", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
   listEntries: (params: Record<string, string>) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v)

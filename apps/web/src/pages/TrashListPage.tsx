@@ -11,6 +11,7 @@ import {
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { LifeGate } from "../components/LifeGate";
+import { useAuth } from "../hooks/useAuth";
 import { MoodFace } from "../components/MoodFace";
 import { MoodScoreBadge } from "../components/MoodScore";
 import { tagLabel } from "../lib/entryTags";
@@ -33,6 +34,7 @@ function formatPurgeAt(iso?: string) {
 
 export function TrashListPage() {
   const location = useLocation();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const domainParam = searchParams.get("domain") ?? "";
   const domainFilter: DomainFilter =
@@ -47,7 +49,7 @@ export function TrashListPage() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    if (domainFilter === "life" && !isLifeUnlocked()) {
+    if (domainFilter === "life" && user?.lifeAccessEnabled && !isLifeUnlocked()) {
       setItems([]);
       setLoading(false);
       return;
@@ -215,7 +217,7 @@ export function TrashListPage() {
     </div>
   );
 
-  if (domainFilter === "life") {
+  if (domainFilter === "life" && user?.lifeAccessEnabled) {
     return <LifeGate>{page}</LifeGate>;
   }
   return page;

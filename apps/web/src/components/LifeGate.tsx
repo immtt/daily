@@ -1,7 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../api/client";
 import { AppHeader } from "./AppHeader";
-import { isLifeUnlocked, lockLife, unlockLife } from "../lib/lifeAccess";
+import { useAuth } from "../hooks/useAuth";
+import {
+  isLifeUnlocked,
+  lockLife,
+  markLifeUnlocked,
+} from "../lib/lifeAccess";
 
 type Props = {
   children: ReactNode;
@@ -10,23 +16,37 @@ type Props = {
 };
 
 export function LifeGate({ children, enabled = true }: Props) {
-  const [unlocked, setUnlocked] = useState(() => isLifeUnlocked());
+  const { user } = useAuth();
+  const gateRequired = enabled && Boolean(user?.lifeAccessEnabled);
+  const [unlocked, setUnlocked] = useState(() =>
+    gateRequired ? isLifeUnlocked() : true
+  );
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (unlockLife(password)) {
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await api.verifyLifeAccess(password);
+      if (!res.ok) {
+        setError("密码不正确");
+        return;
+      }
+      markLifeUnlocked(res.required ? password : null);
       setUnlocked(true);
-      setError("");
       setPassword("");
       window.dispatchEvent(new Event("life-unlocked"));
-      return;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "验证失败");
+    } finally {
+      setSubmitting(false);
     }
-    setError("密码不正确");
   }
 
-  if (!enabled || unlocked) {
+  if (!gateRequired || unlocked) {
     return <>{children}</>;
   }
 
@@ -44,9 +64,9 @@ export function LifeGate({ children, enabled = true }: Props) {
         <div className="life-gate-card">
           <h2 className="life-gate-title">进入生活栏目</h2>
           <p className="muted life-gate-hint">
-            此栏目需要单独密码；离开后再进入需重新输入
+            此栏目已启用访问密码；离开后再进入需重新输入
           </p>
-          <form onSubmit={onSubmit} className="life-gate-form">
+          <form onSubmit={(e) => void onSubmit(e)} className="life-gate-form">
             <label className="field">
               访问密码
               <input
@@ -54,12 +74,12 @@ export function LifeGate({ children, enabled = true }: Props) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="off"
-                placeholder="请输入密码"
+                placeholder="请输入生活栏目密码"
               />
             </label>
             {error && <p className="form-error">{error}</p>}
-            <button type="submit" className="btn-primary">
-              进入
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? "验证中…" : "进入"}
             </button>
           </form>
         </div>
@@ -69,7 +89,8 @@ export function LifeGate({ children, enabled = true }: Props) {
 }
 
 export function LifeLockButton() {
-  if (!isLifeUnlocked()) return null;
+  const { user } = useAuth();
+  if (!user?.lifeAccessEnabled || !isLifeUnlocked()) return null;
   return (
     <button
       type="button"

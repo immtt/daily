@@ -25,6 +25,9 @@ model User {
   passwordHash String     @map("password_hash") @db.VarChar(255)
   role         UserRole   @default(user)
   status       UserStatus @default(pending)
+  /// 是否启用生活栏目二次密码
+  lifeAccessEnabled Boolean  @default(false) @map("life_access_enabled")
+  lifePasswordHash  String?  @map("life_password_hash") @db.VarChar(255)
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
   entries      DiaryEntry[]

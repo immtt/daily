@@ -30,12 +30,3 @@ export function assertTagForDomain(
   }
   return { ok: true, tag };
 }
-
-export function lifeAccessPassword() {
-  return process.env.LIFE_ACCESS_PASSWORD || "ai";
-}
-
-export function hasLifeAccess(header: string | string[] | undefined) {
-  const v = Array.isArray(header) ? header[0] : header;
-  return v === lifeAccessPassword();
-}
