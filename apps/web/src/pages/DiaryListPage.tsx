@@ -20,20 +20,29 @@ export function DiaryListPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [stockCode, setStockCode] = useState("");
+  const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const isMindset = category === "mindset";
 
   async function load(nextCategory: CategoryFilter = category) {
     setLoading(true);
     setError("");
     try {
-      const res = await api.listEntries({
-        from,
-        to,
-        stockCode,
-        ...(nextCategory ? { category: nextCategory } : {}),
-      });
+      const params: Record<string, string> = { from, to };
+      if (nextCategory) params.category = nextCategory;
+      if (nextCategory === "mindset") {
+        if (keyword.trim()) params.q = keyword.trim();
+      } else if (nextCategory === "review") {
+        if (stockCode) params.stockCode = stockCode;
+      } else {
+        // 全部：有股票码走股票，否则走关键字
+        if (stockCode) params.stockCode = stockCode;
+        else if (keyword.trim()) params.q = keyword.trim();
+      }
+      const res = await api.listEntries(params);
       setItems(res.items);
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
@@ -86,15 +95,31 @@ export function DiaryListPage() {
           ))}
         </div>
 
-        <section className="filter-bar">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          <span className="muted">至</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          <input
-            placeholder="股票代码或名称"
-            value={stockCode}
-            onChange={(e) => setStockCode(e.target.value.trim())}
-          />
+        <section className={`filter-bar ${isMindset ? "filter-bar--keyword" : ""}`}>
+          {!isMindset && (
+            <>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <span className="muted">至</span>
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </>
+          )}
+          {isMindset ? (
+            <input
+              className="filter-keyword"
+              placeholder="搜索心法关键字"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void load();
+              }}
+            />
+          ) : (
+            <input
+              placeholder="股票代码或名称"
+              value={stockCode}
+              onChange={(e) => setStockCode(e.target.value.trim())}
+            />
+          )}
           <button type="button" className="btn-secondary" onClick={() => void load()}>
             筛选
           </button>
@@ -113,9 +138,13 @@ export function DiaryListPage() {
           <ul className="entry-list">
             {items.map((e) => (
               <li key={e.id}>
-                <Link to={`/entries/${e.id}`} className="entry-card">
+                <Link
+                  to={`/entries/${e.id}`}
+                  className={`entry-card ${e.pinned ? "entry-card--pinned" : ""}`}
+                >
                   <div className="entry-top">
                     <div className="entry-top-left">
+                      {e.pinned && <span className="pin-badge">置顶</span>}
                       <time>{e.entryDate}</time>
                       <span
                         className={`category-chip category-chip--${e.category || "review"}`}
@@ -126,14 +155,16 @@ export function DiaryListPage() {
                     <MoodFace id={e.mood} size={26} />
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
-                  <div className="entry-meta">
-                    <span className={pnlClass(e.pnlDay)}>
-                      当日 {formatPnl(e.pnlDay)}
-                    </span>
-                    <span className={pnlClass(e.pnlTotal)}>
-                      累计 {formatPnl(e.pnlTotal)}
-                    </span>
-                  </div>
+                  {e.category !== "mindset" && (
+                    <div className="entry-meta">
+                      <span className={pnlClass(e.pnlDay)}>
+                        当日 {formatPnl(e.pnlDay)}
+                      </span>
+                      <span className={pnlClass(e.pnlTotal)}>
+                        累计 {formatPnl(e.pnlTotal)}
+                      </span>
+                    </div>
+                  )}
                   {e.stocks.length > 0 && (
                     <div className="stock-tags">
                       {e.stocks.slice(0, 4).map((s) => (

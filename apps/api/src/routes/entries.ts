@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { formatDate, parseDateOnly, sendError, toNum, entryIdPath } from "../lib/util.js";
 import { purgeAt, TRASH_RETENTION_DAYS } from "../services/trash.js";
 import { matchStocksInText, resolveStockFilter } from "../services/stockMatch.js";
+import { buildSearchText } from "../lib/searchText.js";
 import type { Prisma } from "@prisma/client";
 
 const stockSchema = z.object({
@@ -49,6 +50,8 @@ function serializeEntry(
     title: string;
     entryDate: Date;
     category: string;
+    pinned?: boolean;
+    pinnedAt?: Date | null;
     pnlDay: Prisma.Decimal | null;
     pnlTotal: Prisma.Decimal | null;
     mood: string | null;
@@ -66,6 +69,8 @@ function serializeEntry(
     title: e.title,
     entryDate: formatDate(e.entryDate),
     category: e.category === "mindset" ? "mindset" : "review",
+    pinned: Boolean(e.pinned),
+    pinnedAt: e.pinnedAt ? e.pinnedAt.toISOString() : null,
     stocks: e.stocks.map((s) => ({ code: s.code, name: s.name })),
     pnlDay: e.pnlDay == null ? null : Number(e.pnlDay),
     pnlTotal: e.pnlTotal == null ? null : Number(e.pnlTotal),
@@ -203,7 +208,14 @@ export async function entryRoutes(app: FastifyInstance) {
     if (q.category === "review" || q.category === "mindset") {
       where.category = q.category;
     }
-    if (q.stockCode) {
+    const keyword = (q.q || q.keyword || "").trim();
+    if (q.category === "mindset") {
+      // 心法：关键字搜标题+正文
+      if (keyword) {
+        where.searchText = { contains: keyword };
+      }
+    } else if (q.stockCode) {
+      // 复盘 / 全部：按股票筛选
       const filter = await resolveStockFilter(prisma, q.stockCode);
       if (filter.codes.length === 0 && !filter.nameContains) {
         where.stocks = { some: { code: "__none__" } };
@@ -221,13 +233,21 @@ export async function entryRoutes(app: FastifyInstance) {
       } else {
         where.stocks = { some: { code: { in: filter.codes } } };
       }
+    } else if (keyword) {
+      // 全部 Tab 也可用关键字
+      where.searchText = { contains: keyword };
     }
     const [total, items] = await Promise.all([
       prisma.diaryEntry.count({ where }),
       prisma.diaryEntry.findMany({
         where,
         include: { stocks: true },
-        orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+        orderBy: [
+          { pinned: "desc" },
+          { pinnedAt: "desc" },
+          { entryDate: "desc" },
+          { createdAt: "desc" },
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -251,17 +271,19 @@ export async function entryRoutes(app: FastifyInstance) {
     }
     const data = parsed.data;
     const stocks = await resolveStocks(data.stocks, data.content);
+    const content = data.content ?? { type: "doc", content: [] };
     const entry = await prisma.diaryEntry.create({
       data: {
         userId: req.user.id,
         title: data.title.trim(),
         entryDate: parseDateOnly(data.entryDate),
         category: data.category,
+        searchText: buildSearchText(data.title.trim(), content),
         pnlDay: toNum(data.pnlDay),
         pnlTotal: toNum(data.pnlTotal),
         mood: data.mood ?? null,
         marketSnapshot: data.marketSnapshot ?? undefined,
-        content: data.content ?? { type: "doc", content: [] },
+        content,
         stocks: { create: stocks },
       },
       include: { stocks: true },
@@ -305,6 +327,12 @@ export async function entryRoutes(app: FastifyInstance) {
             data.content ?? existing.content
           )
         : null;
+    const nextTitle =
+      data.title !== undefined ? data.title.trim() : existing.title;
+    const nextContent =
+      data.content !== undefined ? data.content : existing.content;
+    const shouldRefreshSearch =
+      data.title !== undefined || data.content !== undefined;
     const entry = await prisma.$transaction(async (tx) => {
       if (stocks) {
         await tx.diaryStock.deleteMany({ where: { entryId: id } });
@@ -326,10 +354,37 @@ export async function entryRoutes(app: FastifyInstance) {
             ? { marketSnapshot: data.marketSnapshot }
             : {}),
           ...(data.content !== undefined ? { content: data.content } : {}),
+          ...(shouldRefreshSearch
+            ? { searchText: buildSearchText(nextTitle, nextContent) }
+            : {}),
           ...(stocks ? { stocks: { create: stocks } } : {}),
         },
         include: { stocks: true },
       });
+    });
+    return serializeEntry(
+      { ...entry, stocks: await enrichStocks(entry.stocks) },
+      true
+    );
+  });
+
+  /** 置顶 / 取消置顶 */
+  app.post(`/entries/${entryIdPath}/pin`, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { pinned?: boolean };
+    const existing = await prisma.diaryEntry.findFirst({
+      where: { id, userId: req.user.id, ...activeOnly },
+    });
+    if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
+    const pinned =
+      typeof body.pinned === "boolean" ? body.pinned : !existing.pinned;
+    const entry = await prisma.diaryEntry.update({
+      where: { id },
+      data: {
+        pinned,
+        pinnedAt: pinned ? new Date() : null,
+      },
+      include: { stocks: true },
     });
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },

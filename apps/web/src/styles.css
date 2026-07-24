@@ -560,6 +560,32 @@ input {
   grid-column: 1 / -1;
   width: 100%;
 }
+.filter-bar--keyword {
+  grid-template-columns: 1fr;
+}
+.filter-bar--keyword .filter-keyword {
+  grid-column: 1 / -1;
+}
+.filter-bar--keyword button {
+  grid-column: 1 / -1;
+}
+
+.pin-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--brand-deep);
+  background: var(--gold-soft);
+  border: 1px solid var(--accent-border);
+}
+.entry-card--pinned {
+  border-left-color: var(--brand);
+  background: color-mix(in srgb, var(--gold-soft) 35%, var(--surface));
+}
 
 .category-tabs {
   display: flex;
@@ -812,11 +838,18 @@ input {
   border-top: 1px solid var(--line);
   z-index: 20;
 }
+.detail-actions--triple {
+  grid-template-columns: 1fr 1.15fr 1fr;
+}
+.detail-actions--confirm {
+  grid-template-columns: 1fr 1fr;
+}
 .detail-actions .btn-primary,
 .detail-actions .btn-danger,
 .detail-actions .btn-secondary {
   min-height: 44px;
   touch-action: manipulation;
+  width: 100%;
 }
 .detail-actions a.btn-primary {
   display: flex;

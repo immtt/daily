@@ -49,6 +49,10 @@ model DiaryEntry {
   entryDate      DateTime  @map("entry_date")
   /// review=复盘 mindset=心法
   category       String    @default("review")
+  pinned         Boolean   @default(false)
+  pinnedAt       DateTime? @map("pinned_at")
+  /// 标题+正文纯文本，供心法关键字搜索
+  searchText     String    @default("") @map("search_text")
   pnlDay         Decimal?  @map("pnl_day")
   pnlTotal       Decimal?  @map("pnl_total")
   mood           String?
@@ -63,6 +67,7 @@ model DiaryEntry {
   @@index([userId, entryDate], map: "idx_diary_entries_user_date")
   @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
   @@index([userId, category], map: "idx_diary_entries_user_category")
+  @@index([userId, pinned, pinnedAt], map: "idx_diary_entries_user_pinned")
   @@map("diary_entries")
 }
 

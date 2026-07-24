@@ -37,6 +37,8 @@ export type DiaryEntry = {
   title: string;
   entryDate: string;
   category: "review" | "mindset";
+  pinned?: boolean;
+  pinnedAt?: string | null;
   stocks: StockRef[];
   pnlDay: number | null;
   pnlTotal: number | null;
@@ -145,6 +147,11 @@ export const api = {
     request<DiaryEntry>(`/entries/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+  pinEntry: (id: string, pinned: boolean) =>
+    request<DiaryEntry>(`/entries/${id}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ pinned }),
     }),
   deleteEntry: (id: string) =>
     request<{ ok: boolean; deletedAt?: string; purgeAt?: string }>(

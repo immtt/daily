@@ -16,6 +16,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { prisma } from "./lib/prisma.js";
 import { purgeExpiredTrash } from "./services/trash.js";
 import { ensureStockCatalog } from "./services/stockCatalogSync.js";
+import { buildSearchText } from "./lib/searchText.js";
 import bcrypt from "bcryptjs";
 
 async function ensureAdmin() {
@@ -33,6 +34,23 @@ async function ensureAdmin() {
     },
   });
   console.log(`Created seed admin: ${username}`);
+}
+
+async function backfillSearchText() {
+  const rows = await prisma.diaryEntry.findMany({
+    where: { searchText: "" },
+    select: { id: true, title: true, content: true },
+    take: 200,
+  });
+  for (const r of rows) {
+    await prisma.diaryEntry.update({
+      where: { id: r.id },
+      data: { searchText: buildSearchText(r.title, r.content) },
+    });
+  }
+  if (rows.length > 0) {
+    console.log(`Backfilled searchText for ${rows.length} entries`);
+  }
 }
 
 async function main() {
@@ -73,6 +91,9 @@ async function main() {
   await ensureAdmin();
   await ensureStockCatalog().catch((err) => {
     console.error("stock_catalog sync failed:", err);
+  });
+  await backfillSearchText().catch((err) => {
+    console.error("searchText backfill failed:", err);
   });
   await purgeExpiredTrash();
   setInterval(

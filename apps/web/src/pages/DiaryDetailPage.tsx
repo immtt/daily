@@ -20,6 +20,7 @@ export function DiaryDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [pinning, setPinning] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -86,6 +87,20 @@ export function DiaryDetailPage() {
     setDeleteError("");
   }
 
+  async function onTogglePin() {
+    if (!entry) return;
+    setPinning(true);
+    setDeleteError("");
+    try {
+      const next = await api.pinEntry(entry.id, !entry.pinned);
+      setEntry(next);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "置顶失败");
+    } finally {
+      setPinning(false);
+    }
+  }
+
   if (error) {
     return (
       <div className="app-shell">
@@ -122,6 +137,7 @@ export function DiaryDetailPage() {
           <span className={`category-chip category-chip--${entry.category || "review"}`}>
             {categoryLabel(entry.category)}
           </span>
+          {entry.pinned && <span className="pin-badge">置顶</span>}
         </div>
         <h1 className="entry-title lg">
           <span>{entry.title}</span>
@@ -159,7 +175,9 @@ export function DiaryDetailPage() {
         )}
       </main>
 
-      <footer className="detail-actions">
+      <footer
+        className={`detail-actions ${confirmDelete ? "detail-actions--confirm" : "detail-actions--triple"}`}
+      >
         {confirmDelete ? (
           <>
             <button
@@ -181,6 +199,18 @@ export function DiaryDetailPage() {
           </>
         ) : (
           <>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void onTogglePin()}
+              disabled={pinning || deleting}
+            >
+              {pinning
+                ? "处理中…"
+                : entry.pinned
+                  ? "取消置顶"
+                  : "置顶"}
+            </button>
             <Link to={`/entries/${entry.id}/edit`} className="btn-primary">
               编辑
             </Link>
