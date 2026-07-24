@@ -1,4 +1,5 @@
 export type ThemeId =
+  | "inkgold"
   | "festive"
   | "ocean"
   | "forest"
@@ -14,6 +15,7 @@ export type ThemeDef = {
 };
 
 export const THEMES: ThemeDef[] = [
+  { id: "inkgold", name: "墨金典雅", swatch: "#c9a227", themeColor: "#0f1218" },
   { id: "festive", name: "喜庆红金", swatch: "#c41e3a", themeColor: "#c41e3a" },
   { id: "ocean", name: "海洋蓝", swatch: "#1677ff", themeColor: "#1677ff" },
   { id: "forest", name: "森系绿", swatch: "#2d8a4e", themeColor: "#2d8a4e" },
@@ -22,7 +24,7 @@ export const THEMES: ThemeDef[] = [
   { id: "lavender", name: "薰衣草", swatch: "#7c5cbf", themeColor: "#7c5cbf" },
 ];
 
-export const DEFAULT_THEME: ThemeId = "festive";
+export const DEFAULT_THEME: ThemeId = "inkgold";
 export const THEME_STORAGE_KEY = "stock-diary-theme";
 
 export function isThemeId(v: string): v is ThemeId {

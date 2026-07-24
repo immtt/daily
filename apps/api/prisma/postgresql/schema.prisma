@@ -47,6 +47,8 @@ model DiaryEntry {
   userId         String    @map("user_id") @db.Uuid
   title          String    @db.VarChar(200)
   entryDate      DateTime  @map("entry_date") @db.Date
+  /// review=复盘 mindset=心法
+  category       String    @default("review") @db.VarChar(16)
   pnlDay         Decimal?  @map("pnl_day") @db.Decimal(12, 2)
   pnlTotal       Decimal?  @map("pnl_total") @db.Decimal(12, 2)
   mood           String?   @db.VarChar(20)
@@ -60,6 +62,7 @@ model DiaryEntry {
 
   @@index([userId, entryDate(sort: Desc)], map: "idx_diary_entries_user_date")
   @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
+  @@index([userId, category], map: "idx_diary_entries_user_category")
   @@map("diary_entries")
 }
 

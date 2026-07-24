@@ -6,8 +6,9 @@ import { AppHeader } from "../components/AppHeader";
 import {
   enrichContentStocks,
 } from "../lib/stockText";
-import { formatPnl, formatStockTag, moodEmoji, pnlClass } from "../lib/format";
+import { formatPnl, formatStockTag, categoryLabel, pnlClass } from "../lib/format";
 import { generateHTML } from "../lib/tiptapHtml";
+import { MoodFace } from "../components/MoodFace";
 
 function formatDateTime(iso?: string) {
   if (!iso) return "—";
@@ -135,9 +136,15 @@ export function TrashDetailPage() {
           删除于 {formatDateTime(entry.deletedAt)} · 将于{" "}
           {formatDateTime(entry.purgeAt)} 自动清除
         </p>
-        <time className="muted">{entry.entryDate}</time>
+        <div className="detail-meta-row">
+          <time className="muted">{entry.entryDate}</time>
+          <span className={`category-chip category-chip--${entry.category || "review"}`}>
+            {categoryLabel(entry.category)}
+          </span>
+        </div>
         <h1 className="entry-title lg">
-          {entry.title} {moodEmoji(entry.mood)}
+          <span>{entry.title}</span>
+          <MoodFace id={entry.mood} size={32} />
         </h1>
         <div className="entry-meta">
           <span className={pnlClass(entry.pnlDay)}>

@@ -11,9 +11,12 @@ const stockSchema = z.object({
   name: z.string().min(1).max(64),
 });
 
+const categorySchema = z.enum(["review", "mindset"]);
+
 const entryBodySchema = z.object({
   title: z.string().min(1).max(200),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  category: categorySchema,
   stocks: z.array(stockSchema).optional().default([]),
   pnlDay: z.union([z.number(), z.string(), z.null()]).optional(),
   pnlTotal: z.union([z.number(), z.string(), z.null()]).optional(),
@@ -45,6 +48,7 @@ function serializeEntry(
     id: string;
     title: string;
     entryDate: Date;
+    category: string;
     pnlDay: Prisma.Decimal | null;
     pnlTotal: Prisma.Decimal | null;
     mood: string | null;
@@ -61,6 +65,7 @@ function serializeEntry(
     id: e.id,
     title: e.title,
     entryDate: formatDate(e.entryDate),
+    category: e.category === "mindset" ? "mindset" : "review",
     stocks: e.stocks.map((s) => ({ code: s.code, name: s.name })),
     pnlDay: e.pnlDay == null ? null : Number(e.pnlDay),
     pnlTotal: e.pnlTotal == null ? null : Number(e.pnlTotal),
@@ -195,6 +200,9 @@ export async function entryRoutes(app: FastifyInstance) {
       if (q.from) where.entryDate.gte = parseDateOnly(q.from);
       if (q.to) where.entryDate.lte = parseDateOnly(q.to);
     }
+    if (q.category === "review" || q.category === "mindset") {
+      where.category = q.category;
+    }
     if (q.stockCode) {
       const filter = await resolveStockFilter(prisma, q.stockCode);
       if (filter.codes.length === 0 && !filter.nameContains) {
@@ -248,6 +256,7 @@ export async function entryRoutes(app: FastifyInstance) {
         userId: req.user.id,
         title: data.title.trim(),
         entryDate: parseDateOnly(data.entryDate),
+        category: data.category,
         pnlDay: toNum(data.pnlDay),
         pnlTotal: toNum(data.pnlTotal),
         mood: data.mood ?? null,
@@ -311,6 +320,7 @@ export async function entryRoutes(app: FastifyInstance) {
           ...(data.pnlTotal !== undefined
             ? { pnlTotal: toNum(data.pnlTotal) }
             : {}),
+          ...(data.category !== undefined ? { category: data.category } : {}),
           ...(data.mood !== undefined ? { mood: data.mood } : {}),
           ...(data.marketSnapshot !== undefined
             ? { marketSnapshot: data.marketSnapshot }

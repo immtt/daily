@@ -1,6 +1,53 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap");
 
 :root,
+[data-theme="inkgold"] {
+  --ink: #e8e4d9;
+  --muted: #9a9386;
+  --line: #2a2e38;
+  --surface: #171b24;
+  --bg: #0f1218;
+  --brand: #c9a227;
+  --brand-deep: #e4c15a;
+  --brand-soft: #2a2416;
+  --gold: #c9a227;
+  --gold-deep: #a8861c;
+  --gold-soft: #241f12;
+  --up: #e85d5d;
+  --down: #4caf7a;
+  --danger: #e07070;
+  --danger-bg: #2a1818;
+  --danger-border: #5a3030;
+  --input-bg: #12161e;
+  --placeholder: #6b655c;
+  --primary-end: #a8861c;
+  --fab-end: #a8861c;
+  --accent-soft: rgba(201, 162, 39, 0.22);
+  --accent-border: rgba(201, 162, 39, 0.4);
+  --header-bg: rgba(15, 18, 24, 0.92);
+  --nav-bg: rgba(15, 18, 24, 0.92);
+  --panel-bg: rgba(23, 27, 36, 0.96);
+  --shell-desktop-bg: rgba(23, 27, 36, 0.72);
+  --body-bg:
+    radial-gradient(ellipse at 12% 0%, rgba(201, 162, 39, 0.12), transparent 42%),
+    radial-gradient(ellipse at 88% 8%, rgba(120, 100, 50, 0.08), transparent 40%),
+    var(--bg);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --fab-shadow: 0 10px 28px rgba(201, 162, 39, 0.28);
+  --primary-shadow: 0 4px 16px rgba(201, 162, 39, 0.28);
+  --focus-ring: rgba(201, 162, 39, 0.22);
+  --stock-tag-bg: linear-gradient(135deg, var(--gold-soft), #1c1a12);
+  --stock-tag-border: rgba(201, 162, 39, 0.28);
+  --index-bg: var(--gold-soft);
+  --index-border: rgba(201, 162, 39, 0.22);
+  --radius: 14px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --header-h: 56px;
+  --tab-h: 64px;
+  --font: "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Noto Serif SC", "Noto Sans SC", serif;
+}
+
 [data-theme="festive"] {
   --ink: #3d1f1f;
   --muted: #8c6b6b;
@@ -41,12 +88,6 @@
   --stock-tag-border: rgba(232, 185, 35, 0.35);
   --index-bg: var(--gold-soft);
   --index-border: rgba(232, 185, 35, 0.25);
-  --radius: 14px;
-  --safe-b: env(safe-area-inset-bottom, 0px);
-  --header-h: 56px;
-  --tab-h: 64px;
-  --font: "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: "Noto Serif SC", "Noto Sans SC", serif;
 }
 
 [data-theme="ocean"] {
@@ -509,6 +550,120 @@ input {
   width: 100%;
 }
 
+.category-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0;
+}
+.category-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 10px 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  position: relative;
+  letter-spacing: 0.06em;
+}
+.category-tab.active {
+  color: var(--brand-deep);
+}
+.category-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: -1px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  color: var(--brand-deep);
+  background: var(--gold-soft);
+  line-height: 1.4;
+}
+.category-chip--mindset {
+  border-color: rgba(150, 170, 210, 0.35);
+  color: #a8b8d8;
+  background: rgba(80, 100, 140, 0.18);
+}
+[data-theme="festive"] .category-chip--mindset,
+[data-theme="ocean"] .category-chip--mindset,
+[data-theme="forest"] .category-chip--mindset,
+[data-theme="minimal"] .category-chip--mindset,
+[data-theme="lavender"] .category-chip--mindset {
+  color: #4a5d8c;
+  background: #eef2fa;
+  border-color: #c8d2e8;
+}
+
+.category-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.category-pick-card {
+  text-align: left;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--input-bg);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink);
+}
+.category-pick-card strong {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--brand-deep);
+}
+.category-pick-card span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.category-pick-card.active {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.req {
+  font-style: normal;
+  color: var(--gold);
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.entry-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
 .entry-list {
   list-style: none;
   display: flex;
@@ -539,6 +694,10 @@ input {
   font-size: 22px;
   font-family: var(--font-display);
   color: var(--brand-deep);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .entry-meta {
   display: flex;
@@ -660,15 +819,19 @@ input {
 .mood-row {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .mood-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   border: 1px solid var(--line);
   background: var(--input-bg);
   font-size: 22px;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
 }
 .mood-btn.active {
   border-color: var(--gold);

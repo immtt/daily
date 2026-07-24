@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api, type DiaryEntry } from "../api/client";
-import { formatPnl, formatStockTag, moodEmoji, pnlClass } from "../lib/format";
+import { formatPnl, formatStockTag, categoryLabel, pnlClass } from "../lib/format";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
+import { MoodFace } from "../components/MoodFace";
 
 function formatPurgeAt(iso?: string) {
   if (!iso) return "";
@@ -62,7 +63,14 @@ export function TrashListPage() {
               <li key={e.id}>
                 <Link to={`/trash/${e.id}`} className="entry-card trash-card">
                   <div className="entry-top">
-                    <time>{e.entryDate}</time>
+                    <div className="entry-top-left">
+                      <time>{e.entryDate}</time>
+                      <span
+                        className={`category-chip category-chip--${e.category || "review"}`}
+                      >
+                        {categoryLabel(e.category)}
+                      </span>
+                    </div>
                     <span className="muted tiny">
                       {e.purgeAt
                         ? `${formatPurgeAt(e.purgeAt)} 清除`
@@ -74,7 +82,7 @@ export function TrashListPage() {
                     <span className={pnlClass(e.pnlDay)}>
                       当日 {formatPnl(e.pnlDay)}
                     </span>
-                    <span>{moodEmoji(e.mood)}</span>
+                    <MoodFace id={e.mood} size={24} />
                   </div>
                   {e.stocks.length > 0 && (
                     <div className="stock-tags">

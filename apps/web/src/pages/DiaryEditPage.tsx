@@ -4,7 +4,13 @@ import { api, type DiaryEntry, type MarketSnapshot } from "../api/client";
 import { DiaryEditor, extractCodesFromContent } from "../components/DiaryEditor";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
-import { MOODS, todayStr } from "../lib/format";
+import { MoodFace } from "../components/MoodFace";
+import {
+  ENTRY_CATEGORIES,
+  MOODS,
+  todayStr,
+  type EntryCategory,
+} from "../lib/format";
 
 export function DiaryEditPage() {
   const { id } = useParams();
@@ -15,6 +21,7 @@ export function DiaryEditPage() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [entryDate, setEntryDate] = useState(todayStr());
+  const [category, setCategory] = useState<EntryCategory>("review");
   const [pnlDay, setPnlDay] = useState("");
   const [pnlTotal, setPnlTotal] = useState("");
   const [mood, setMood] = useState<string | null>(null);
@@ -38,6 +45,7 @@ export function DiaryEditPage() {
       .then((e: DiaryEntry) => {
         setTitle(e.title);
         setEntryDate(e.entryDate);
+        setCategory(e.category === "mindset" ? "mindset" : "review");
         setPnlDay(e.pnlDay == null ? "" : String(e.pnlDay));
         setPnlTotal(e.pnlTotal == null ? "" : String(e.pnlTotal));
         setMood(e.mood);
@@ -51,6 +59,10 @@ export function DiaryEditPage() {
   async function onSave() {
     if (!title.trim()) {
       setError("请填写标题");
+      return;
+    }
+    if (category !== "review" && category !== "mindset") {
+      setError("请选择分类：复盘或心法");
       return;
     }
     setSaving(true);
@@ -67,6 +79,7 @@ export function DiaryEditPage() {
       const body = {
         title: title.trim(),
         entryDate,
+        category,
         pnlDay: pnlDay === "" ? null : Number(pnlDay),
         pnlTotal: pnlTotal === "" ? null : Number(pnlTotal),
         mood,
@@ -103,22 +116,41 @@ export function DiaryEditPage() {
             ← 返回
           </Link>
         }
-        center={<div className="brand-sm">{isNew ? "写复盘" : "编辑"}</div>}
+        center={<div className="brand-sm">{isNew ? "写日记" : "编辑"}</div>}
       />
 
       <main className="app-main edit">
+        <div className="field">
+          <span>
+            分类 <em className="req">必选</em>
+          </span>
+          <div className="category-pick">
+            {ENTRY_CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`category-pick-card ${category === c.id ? "active" : ""}`}
+                onClick={() => setCategory(c.id)}
+              >
+                <strong>{c.label}</strong>
+                <span>{c.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <label className="field">
           标题
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="今日复盘要点"
+            placeholder={category === "mindset" ? "一条可复用的心法" : "今日复盘要点"}
             maxLength={200}
           />
         </label>
 
         <label className="field">
-          复盘日期
+          日期
           <input
             type="date"
             value={entryDate}
@@ -126,28 +158,30 @@ export function DiaryEditPage() {
           />
         </label>
 
-        <div className="field-row">
-          <label className="field">
-            当日盈亏
-            <input
-              type="number"
-              step="0.01"
-              value={pnlDay}
-              onChange={(e) => setPnlDay(e.target.value)}
-              placeholder="元"
-            />
-          </label>
-          <label className="field">
-            总盈亏
-            <input
-              type="number"
-              step="0.01"
-              value={pnlTotal}
-              onChange={(e) => setPnlTotal(e.target.value)}
-              placeholder="元"
-            />
-          </label>
-        </div>
+        {category === "review" && (
+          <div className="field-row">
+            <label className="field">
+              当日盈亏
+              <input
+                type="number"
+                step="0.01"
+                value={pnlDay}
+                onChange={(e) => setPnlDay(e.target.value)}
+                placeholder="元"
+              />
+            </label>
+            <label className="field">
+              总盈亏
+              <input
+                type="number"
+                step="0.01"
+                value={pnlTotal}
+                onChange={(e) => setPnlTotal(e.target.value)}
+                placeholder="元"
+              />
+            </label>
+          </div>
+        )}
 
         <div className="field">
           <span>情绪</span>
@@ -159,19 +193,22 @@ export function DiaryEditPage() {
                 className={`mood-btn ${mood === m.id ? "active" : ""}`}
                 onClick={() => setMood(mood === m.id ? null : m.id)}
                 title={m.label}
+                aria-label={m.label}
               >
-                {m.emoji}
+                <MoodFace id={m.id} size={28} />
               </button>
             ))}
           </div>
         </div>
 
-        <MarketCard
-          date={entryDate}
-          snapshot={marketSnapshot}
-          onChange={onMarket}
-          editable
-        />
+        {category === "review" && (
+          <MarketCard
+            date={entryDate}
+            snapshot={marketSnapshot}
+            onChange={onMarket}
+            editable
+          />
+        )}
 
         <div className="field">
           <span>正文</span>

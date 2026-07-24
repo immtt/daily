@@ -36,6 +36,7 @@ export type DiaryEntry = {
   id: string;
   title: string;
   entryDate: string;
+  category: "review" | "mindset";
   stocks: StockRef[];
   pnlDay: number | null;
   pnlTotal: number | null;
