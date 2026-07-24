@@ -6,9 +6,10 @@ import { AppHeader } from "../components/AppHeader";
 import {
   enrichContentStocks,
 } from "../lib/stockText";
-import { formatPnl, formatStockTag, categoryLabel, pnlClass } from "../lib/format";
+import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
+import { ProseGallery } from "../components/ProseGallery";
 
 export function DiaryDetailPage() {
   const { id } = useParams();
@@ -143,32 +144,26 @@ export function DiaryDetailPage() {
           <span>{entry.title}</span>
           <MoodFace id={entry.mood} size={32} />
         </h1>
-        <div className="entry-meta">
-          <span className={pnlClass(entry.pnlDay)}>
-            当日 {formatPnl(entry.pnlDay)}
-          </span>
-          <span className={pnlClass(entry.pnlTotal)}>
-            累计 {formatPnl(entry.pnlTotal)}
-          </span>
-        </div>
-
-        {entry.marketSnapshot && (
-          <MarketCard date={entry.entryDate} snapshot={entry.marketSnapshot} />
-        )}
-
-        {stocks.length > 0 && (
-          <div className="stock-tags">
-            {stocks.map((s) => (
-              <span key={s.code} className="stock-tag">
-                {formatStockTag(s)}
-              </span>
-            ))}
+        {entry.category !== "mindset" && (
+          <div className="entry-meta">
+            <span className={pnlClass(entry.pnlDay)}>
+              当日 {formatPnl(entry.pnlDay)}
+            </span>
+            <span className={pnlClass(entry.pnlTotal)}>
+              累计 {formatPnl(entry.pnlTotal)}
+            </span>
           </div>
         )}
 
-        <article
-          className="prose"
-          dangerouslySetInnerHTML={{ __html: html }}
+        {entry.marketSnapshot && entry.category !== "mindset" && (
+          <MarketCard date={entry.entryDate} snapshot={entry.marketSnapshot} />
+        )}
+
+        <ProseGallery
+          html={html}
+          content={entry.content}
+          stocks={stocks}
+          compactStocks={false}
         />
         {deleteError && (
           <p className="form-error delete-error">{deleteError}</p>

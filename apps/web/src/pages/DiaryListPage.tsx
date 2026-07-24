@@ -4,13 +4,13 @@ import { api, type DiaryEntry } from "../api/client";
 import {
   categoryLabel,
   formatPnl,
-  formatStockTag,
   pnlClass,
   type EntryCategory,
 } from "../lib/format";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
+import { StockTagRow } from "../components/ProseGallery";
 
 type CategoryFilter = "" | EntryCategory;
 
@@ -155,25 +155,21 @@ export function DiaryListPage() {
                     <MoodFace id={e.mood} size={26} />
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
-                  {e.category !== "mindset" && (
-                    <div className="entry-meta">
-                      <span className={pnlClass(e.pnlDay)}>
-                        当日 {formatPnl(e.pnlDay)}
-                      </span>
-                      <span className={pnlClass(e.pnlTotal)}>
-                        累计 {formatPnl(e.pnlTotal)}
-                      </span>
-                    </div>
-                  )}
-                  {e.stocks.length > 0 && (
-                    <div className="stock-tags">
-                      {e.stocks.slice(0, 4).map((s) => (
-                        <span key={s.code} className="stock-tag">
-                          {formatStockTag(s)}
+                  <div className="entry-meta entry-meta--slot">
+                    {e.category !== "mindset" ? (
+                      <>
+                        <span className={pnlClass(e.pnlDay)}>
+                          当日 {formatPnl(e.pnlDay)}
                         </span>
-                      ))}
-                    </div>
-                  )}
+                        <span className={pnlClass(e.pnlTotal)}>
+                          累计 {formatPnl(e.pnlTotal)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="muted tiny">心法笔记</span>
+                    )}
+                  </div>
+                  <StockTagRow stocks={e.stocks} compact max={3} />
                 </Link>
               </li>
             ))}

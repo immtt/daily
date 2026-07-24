@@ -6,9 +6,10 @@ import { AppHeader } from "../components/AppHeader";
 import {
   enrichContentStocks,
 } from "../lib/stockText";
-import { formatPnl, formatStockTag, categoryLabel, pnlClass } from "../lib/format";
+import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
+import { ProseGallery } from "../components/ProseGallery";
 
 function formatDateTime(iso?: string) {
   if (!iso) return "—";
@@ -159,17 +160,12 @@ export function TrashDetailPage() {
           <MarketCard date={entry.entryDate} snapshot={entry.marketSnapshot} />
         )}
 
-        {stocks.length > 0 && (
-          <div className="stock-tags">
-            {stocks.map((s) => (
-              <span key={s.code} className="stock-tag">
-                {formatStockTag(s)}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <article className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+        <ProseGallery
+          html={html}
+          content={entry.content}
+          stocks={stocks}
+          compactStocks={false}
+        />
         {actionError && <p className="form-error delete-error">{actionError}</p>}
       </main>
 

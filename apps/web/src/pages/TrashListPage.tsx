@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api, type DiaryEntry } from "../api/client";
-import { formatPnl, formatStockTag, categoryLabel, pnlClass } from "../lib/format";
+import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
+import { StockTagRow } from "../components/ProseGallery";
 
 function formatPurgeAt(iso?: string) {
   if (!iso) return "";
@@ -78,21 +79,13 @@ export function TrashListPage() {
                     </span>
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
-                  <div className="entry-meta">
+                  <div className="entry-meta entry-meta--slot">
                     <span className={pnlClass(e.pnlDay)}>
                       当日 {formatPnl(e.pnlDay)}
                     </span>
                     <MoodFace id={e.mood} size={24} />
                   </div>
-                  {e.stocks.length > 0 && (
-                    <div className="stock-tags">
-                      {e.stocks.slice(0, 3).map((s) => (
-                        <span key={s.code} className="stock-tag">
-                          {formatStockTag(s)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <StockTagRow stocks={e.stocks} compact max={3} />
                 </Link>
               </li>
             ))}

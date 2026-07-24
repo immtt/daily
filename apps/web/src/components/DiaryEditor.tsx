@@ -1,12 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { api } from "../api/client";
-import {
-  enrichContentStocks,
-} from "../lib/stockText";
+import { enrichContentStocks } from "../lib/stockText";
+import { extractImageUrls } from "../lib/images";
+import { ImageLightbox } from "./ImageLightbox";
 
 type Props = {
   value: unknown;
@@ -17,6 +17,8 @@ export function DiaryEditor({ value, onChange }: Props) {
   const lookupCache = useRef(new Map<string, string>());
   const timer = useRef<number | null>(null);
   const applying = useRef(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -37,6 +39,12 @@ export function DiaryEditor({ value, onChange }: Props) {
     },
   });
 
+  const imageUrls = useMemo(
+    () => extractImageUrls(editor?.getJSON() ?? value),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editor, value, editor?.state.doc.content.size]
+  );
+
   useEffect(() => {
     if (!editor || applying.current) return;
     const current = JSON.stringify(editor.getJSON());
@@ -50,6 +58,28 @@ export function DiaryEditor({ value, onChange }: Props) {
       }, 200);
     }
   }, [value, editor]);
+
+  useEffect(() => {
+    const root = wrapRef.current;
+    if (!root) return;
+    function onClick(e: MouseEvent) {
+      const t = e.target as HTMLElement;
+      if (t.tagName !== "IMG" || !t.closest(".editor-body")) return;
+      const src =
+        (t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src;
+      const urls = extractImageUrls(editor?.getJSON() ?? value);
+      if (!urls.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      let idx = urls.findIndex(
+        (u) => u === src || src.endsWith(u) || src.includes(u)
+      );
+      if (idx < 0) idx = 0;
+      setPreviewIndex(idx);
+    }
+    root.addEventListener("click", onClick);
+    return () => root.removeEventListener("click", onClick);
+  }, [editor, value]);
 
   async function autoTagify(ed: NonNullable<typeof editor>) {
     if (applying.current) return;
@@ -102,7 +132,7 @@ export function DiaryEditor({ value, onChange }: Props) {
   if (!editor) return null;
 
   return (
-    <div className="editor-wrap">
+    <div className="editor-wrap" ref={wrapRef}>
       <div className="editor-toolbar">
         <button
           type="button"
@@ -123,6 +153,14 @@ export function DiaryEditor({ value, onChange }: Props) {
         </button>
       </div>
       <EditorContent editor={editor} className="editor-body" />
+      {previewIndex != null && imageUrls.length > 0 && (
+        <ImageLightbox
+          urls={imageUrls}
+          index={previewIndex}
+          onClose={() => setPreviewIndex(null)}
+          onIndexChange={setPreviewIndex}
+        />
+      )}
     </div>
   );
 }
