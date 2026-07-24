@@ -401,6 +401,7 @@ input {
   margin-bottom: 14px;
   font-size: 13px;
   color: var(--muted);
+  min-width: 0;
 }
 .auth-form input,
 .field input,
@@ -410,6 +411,10 @@ input {
   padding: 12px 14px;
   background: var(--input-bg);
   color: var(--ink);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .auth-form input:focus,
 .field input:focus,
@@ -420,8 +425,14 @@ input {
 }
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+.field-row > .field {
+  margin-bottom: 14px;
+  min-width: 0;
 }
 
 .btn-primary,
@@ -613,8 +624,10 @@ input {
 
 .category-pick {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 .category-pick-card {
   text-align: left;
@@ -627,6 +640,9 @@ input {
   flex-direction: column;
   gap: 6px;
   color: var(--ink);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .category-pick-card strong {
   font-family: var(--font-display);
@@ -641,7 +657,7 @@ input {
 .category-pick-card.active {
   border-color: var(--gold);
   background: var(--gold-soft);
-  box-shadow: 0 0 0 1px var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--gold);
 }
 
 .req {
@@ -817,13 +833,16 @@ input {
 }
 
 .mood-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
 }
 .mood-btn {
-  width: 48px;
-  height: 48px;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 52px;
   border-radius: 14px;
   border: 1px solid var(--line);
   background: var(--input-bg);
@@ -832,6 +851,8 @@ input {
   display: grid;
   place-items: center;
   padding: 0;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .mood-btn.active {
   border-color: var(--gold);
