@@ -15,6 +15,7 @@ import { uploadRoutes } from "./routes/uploads.js";
 import { adminRoutes } from "./routes/admin.js";
 import { prisma } from "./lib/prisma.js";
 import { purgeExpiredTrash } from "./services/trash.js";
+import { ensureStockCatalog } from "./services/stockCatalogSync.js";
 import bcrypt from "bcryptjs";
 
 async function ensureAdmin() {
@@ -70,6 +71,9 @@ async function main() {
   );
 
   await ensureAdmin();
+  await ensureStockCatalog().catch((err) => {
+    console.error("stock_catalog sync failed:", err);
+  });
   await purgeExpiredTrash();
   setInterval(
     () => {
