@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
-import Placeholder from "@tiptap/extension-placeholder";
+import { getEditorExtensions } from "../lib/editorExtensions";
+import { normalizeContentStructure } from "../lib/normalizeContent";
 import { api } from "../api/client";
 import { enrichContentStocks } from "../lib/stockText";
 import { extractImageUrls } from "../lib/images";
@@ -21,14 +20,12 @@ export function DiaryEditor({ value, onChange }: Props) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Image.configure({ inline: false, allowBase64: false }),
-      Placeholder.configure({
-        placeholder: "写下今日复盘…输入股票代码或名称，自动带出对应信息",
-      }),
-    ],
-    content: (value as object) || { type: "doc", content: [] },
+    extensions: getEditorExtensions(),
+    content:
+      normalizeContentStructure((value as object) || {
+        type: "doc",
+        content: [],
+      }) as object,
     onUpdate: ({ editor: ed }) => {
       if (applying.current) return;
       onChange(ed.getJSON());
@@ -51,7 +48,9 @@ export function DiaryEditor({ value, onChange }: Props) {
     const next = JSON.stringify(value ?? {});
     if (current !== next && value) {
       applying.current = true;
-      editor.commands.setContent(value as object);
+      editor.commands.setContent(
+        normalizeContentStructure(value) as object
+      );
       applying.current = false;
       window.setTimeout(() => {
         void autoTagify(editor);

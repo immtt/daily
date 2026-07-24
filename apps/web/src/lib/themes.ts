@@ -5,7 +5,8 @@ export type ThemeId =
   | "forest"
   | "dark"
   | "minimal"
-  | "lavender";
+  | "lavender"
+  | "tech";
 
 export type ThemeDef = {
   id: ThemeId;
@@ -22,6 +23,7 @@ export const THEMES: ThemeDef[] = [
   { id: "dark", name: "夜盘深色", swatch: "#1a1f2e", themeColor: "#1a1f2e" },
   { id: "minimal", name: "极简白", swatch: "#595959", themeColor: "#ffffff" },
   { id: "lavender", name: "薰衣草", swatch: "#7c5cbf", themeColor: "#7c5cbf" },
+  { id: "tech", name: "赛博科技", swatch: "#00d4ff", themeColor: "#070b14" },
 ];
 
 export const DEFAULT_THEME: ThemeId = "inkgold";
