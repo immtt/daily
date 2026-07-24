@@ -155,20 +155,18 @@ export function DiaryListPage() {
                     <MoodFace id={e.mood} size={26} />
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
-                  <div className="entry-meta entry-meta--slot">
-                    {e.category !== "mindset" ? (
-                      <>
-                        <span className={pnlClass(e.pnlDay)}>
-                          当日 {formatPnl(e.pnlDay)}
-                        </span>
-                        <span className={pnlClass(e.pnlTotal)}>
-                          累计 {formatPnl(e.pnlTotal)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="muted tiny">心法笔记</span>
-                    )}
-                  </div>
+                  {e.category !== "mindset" ? (
+                    <div className="entry-meta entry-meta--slot">
+                      <span className={pnlClass(e.pnlDay)}>
+                        当日 {formatPnl(e.pnlDay)}
+                      </span>
+                      <span className={pnlClass(e.pnlTotal)}>
+                        累计 {formatPnl(e.pnlTotal)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="entry-meta entry-meta--slot" aria-hidden="true" />
+                  )}
                   <StockTagRow stocks={e.stocks} compact max={3} />
                 </Link>
               </li>

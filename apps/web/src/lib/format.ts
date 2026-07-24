@@ -45,6 +45,12 @@ export function formatStockTag(s: { code: string; name: string }) {
   return name && name !== s.code ? `${s.code} ${name}` : s.code;
 }
 
+/** 列表卡片：优先显示股票名称 */
+export function formatStockName(s: { code: string; name: string }) {
+  const name = s.name?.trim();
+  return name && name !== s.code ? name : s.code;
+}
+
 export function formatPnl(n: number | null | undefined) {
   if (n == null || Number.isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";

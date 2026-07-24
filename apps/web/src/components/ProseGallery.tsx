@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { formatStockTag } from "../lib/format";
+import { formatStockTag, formatStockName } from "../lib/format";
 import { extractImageUrls } from "../lib/images";
 import { ImageLightbox } from "./ImageLightbox";
 
@@ -77,8 +77,12 @@ export function StockTagRow({
   return (
     <div className={`stock-tags ${compact ? "stock-tags--slot" : ""}`}>
       {shown.map((s) => (
-        <span key={s.code} className="stock-tag" title={formatStockTag(s)}>
-          {compact ? s.code : formatStockTag(s)}
+        <span
+          key={s.code}
+          className="stock-tag"
+          title={formatStockTag(s)}
+        >
+          {compact ? formatStockName(s) : formatStockTag(s)}
         </span>
       ))}
       {more > 0 && <span className="stock-tag stock-tag--more">+{more}</span>}
