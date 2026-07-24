@@ -3,10 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import { api, type DiaryEntry } from "../api/client";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
-import {
-  enrichContentStocks,
-} from "../lib/stockText";
+import { enrichContentStocks } from "../lib/stockText";
 import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
+import {
+  domainDetailPath,
+  domainLabel,
+  resolveEntryDomain,
+  trashPath,
+} from "../lib/domain";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
 import { ProseGallery } from "../components/ProseGallery";
@@ -32,6 +36,9 @@ export function TrashDetailPage() {
   const [busy, setBusy] = useState(false);
   const [confirmPurge, setConfirmPurge] = useState(false);
 
+  const entryDomain = entry ? resolveEntryDomain(entry) : "stock";
+  const isStock = entryDomain === "stock";
+
   useEffect(() => {
     if (!id) return;
     setConfirmPurge(false);
@@ -43,7 +50,7 @@ export function TrashDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!entry) return;
+    if (!entry || !isStock) return;
     const text = JSON.stringify(entry.content ?? {});
     void api.resolveStocksInText(text).then((res) => {
       const map = new Map<string, string>();
@@ -55,29 +62,33 @@ export function TrashDetailPage() {
         [...map.entries()].map(([code, name]) => ({ code, name }))
       );
     });
-  }, [entry]);
+  }, [entry, isStock]);
 
   const stocks = useMemo(() => {
-    if (!entry) return [];
+    if (!entry || !isStock) return [];
     const nameMap = new Map(resolvedStocks.map((s) => [s.code, s.name]));
     return entry.stocks.map((s) => ({
       code: s.code,
       name: nameMap.get(s.code) || s.name,
     }));
-  }, [entry, resolvedStocks]);
+  }, [entry, resolvedStocks, isStock]);
 
   const html = useMemo(() => {
     if (!entry) return "";
-    return generateHTML(enrichContentStocks(entry.content, resolvedStocks));
-  }, [entry, resolvedStocks]);
+    const raw = isStock
+      ? enrichContentStocks(entry.content, resolvedStocks)
+      : entry.content;
+    return generateHTML(raw);
+  }, [entry, resolvedStocks, isStock]);
 
   async function onRestore() {
-    if (!id) return;
+    if (!id || !entry) return;
     setBusy(true);
     setActionError("");
     try {
       await api.restoreEntry(id);
-      window.location.replace(`/entries/${id}`);
+      const domain = resolveEntryDomain(entry);
+      window.location.replace(domainDetailPath(domain, id));
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "恢复失败");
       setBusy(false);
@@ -85,7 +96,7 @@ export function TrashDetailPage() {
   }
 
   async function onPurge() {
-    if (!id) return;
+    if (!id || !entry) return;
     if (!confirmPurge) {
       setConfirmPurge(true);
       return;
@@ -94,7 +105,7 @@ export function TrashDetailPage() {
     setActionError("");
     try {
       await api.purgeEntry(id);
-      window.location.replace("/trash");
+      window.location.replace(trashPath(resolveEntryDomain(entry)));
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "删除失败");
       setBusy(false);
@@ -125,7 +136,7 @@ export function TrashDetailPage() {
     <div className="app-shell">
       <AppHeader
         left={
-          <Link to="/trash" className="btn-ghost">
+          <Link to={trashPath(entryDomain)} className="btn-ghost">
             ← 废纸篓
           </Link>
         }
@@ -139,31 +150,42 @@ export function TrashDetailPage() {
         </p>
         <div className="detail-meta-row">
           <time className="muted">{entry.entryDate}</time>
-          <span className={`category-chip category-chip--${entry.category || "review"}`}>
-            {categoryLabel(entry.category)}
+          <span className={`domain-chip domain-chip--${entryDomain}`}>
+            {domainLabel(entryDomain)}
           </span>
+          {isStock && (
+            <span
+              className={`category-chip category-chip--${entry.category || "review"}`}
+            >
+              {categoryLabel(entry.category)}
+            </span>
+          )}
         </div>
         <h1 className="entry-title lg">
           <span>{entry.title}</span>
-          <MoodFace id={entry.mood} size={32} />
+          {(isStock || entryDomain === "life") && (
+            <MoodFace id={entry.mood} size={32} />
+          )}
         </h1>
-        <div className="entry-meta">
-          <span className={pnlClass(entry.pnlDay)}>
-            当日 {formatPnl(entry.pnlDay)}
-          </span>
-          <span className={pnlClass(entry.pnlTotal)}>
-            累计 {formatPnl(entry.pnlTotal)}
-          </span>
-        </div>
+        {isStock && (
+          <div className="entry-meta">
+            <span className={pnlClass(entry.pnlDay)}>
+              当日 {formatPnl(entry.pnlDay)}
+            </span>
+            <span className={pnlClass(entry.pnlTotal)}>
+              累计 {formatPnl(entry.pnlTotal)}
+            </span>
+          </div>
+        )}
 
-        {entry.marketSnapshot && (
+        {isStock && entry.marketSnapshot && (
           <MarketCard date={entry.entryDate} snapshot={entry.marketSnapshot} />
         )}
 
         <ProseGallery
           html={html}
           content={entry.content}
-          stocks={stocks}
+          stocks={isStock ? stocks : undefined}
           compactStocks={false}
         />
         {actionError && <p className="form-error delete-error">{actionError}</p>}

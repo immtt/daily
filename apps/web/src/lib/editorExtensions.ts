@@ -12,11 +12,12 @@ export function getReadExtensions(): Extensions {
 }
 
 /** 编辑页扩展 */
-export function getEditorExtensions(): Extensions {
+export function getEditorExtensions(placeholder?: string): Extensions {
   return [
     ...getReadExtensions(),
     Placeholder.configure({
       placeholder:
+        placeholder ??
         "写下今日复盘…输入股票代码或名称，自动带出对应信息",
     }),
   ];

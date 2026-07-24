@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type DiaryEntry } from "../api/client";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
-import {
-  enrichContentStocks,
-} from "../lib/stockText";
+import { enrichContentStocks } from "../lib/stockText";
 import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
+import {
+  type EntryDomain,
+  domainEditPath,
+  domainLabel,
+  domainListPath,
+  resolveEntryDomain,
+} from "../lib/domain";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
 import { ProseGallery } from "../components/ProseGallery";
 
-export function DiaryDetailPage() {
+type Props = {
+  domain: EntryDomain;
+};
+
+export function EntryDetailPage({ domain }: Props) {
   const { id } = useParams();
+  const nav = useNavigate();
   const [entry, setEntry] = useState<DiaryEntry | null>(null);
   const [resolvedStocks, setResolvedStocks] = useState<
     Array<{ code: string; name: string }>
@@ -23,18 +33,26 @@ export function DiaryDetailPage() {
   const [deleteError, setDeleteError] = useState("");
   const [pinning, setPinning] = useState(false);
 
+  const isStock = domain === "stock";
+
   useEffect(() => {
     if (!id) return;
     setConfirmDelete(false);
     setDeleteError("");
     api
       .getEntry(id)
-      .then(setEntry)
+      .then((e) => {
+        if (resolveEntryDomain(e) !== domain) {
+          nav(`/${resolveEntryDomain(e)}/${e.id}`, { replace: true });
+          return;
+        }
+        setEntry(e);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "加载失败"));
-  }, [id]);
+  }, [id, domain, nav]);
 
   useEffect(() => {
-    if (!entry) return;
+    if (!entry || !isStock) return;
     const text = JSON.stringify(entry.content ?? {});
     void api.resolveStocksInText(text).then((res) => {
       const map = new Map<string, string>();
@@ -46,21 +64,24 @@ export function DiaryDetailPage() {
         [...map.entries()].map(([code, name]) => ({ code, name }))
       );
     });
-  }, [entry]);
+  }, [entry, isStock]);
 
   const stocks = useMemo(() => {
-    if (!entry) return [];
+    if (!entry || !isStock) return [];
     const nameMap = new Map(resolvedStocks.map((s) => [s.code, s.name]));
     return entry.stocks.map((s) => ({
       code: s.code,
       name: nameMap.get(s.code) || s.name,
     }));
-  }, [entry, resolvedStocks]);
+  }, [entry, resolvedStocks, isStock]);
 
   const html = useMemo(() => {
     if (!entry) return "";
-    return generateHTML(enrichContentStocks(entry.content, resolvedStocks));
-  }, [entry, resolvedStocks]);
+    const raw = isStock
+      ? enrichContentStocks(entry.content, resolvedStocks)
+      : entry.content;
+    return generateHTML(raw);
+  }, [entry, resolvedStocks, isStock]);
 
   async function onDelete() {
     const entryId = entry?.id || id;
@@ -74,12 +95,11 @@ export function DiaryDetailPage() {
     setDeleteError("");
     try {
       await api.deleteEntry(entryId);
-      window.location.replace("/");
+      window.location.replace(domainListPath(domain));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "删除失败";
       setDeleteError(msg);
       setDeleting(false);
-      // 保持 confirmDelete=true，便于重试
     }
   }
 
@@ -106,7 +126,7 @@ export function DiaryDetailPage() {
     return (
       <div className="app-shell">
         <p className="form-error center">{error}</p>
-        <Link to="/" className="btn-secondary">
+        <Link to={domainListPath(domain)} className="btn-secondary">
           返回
         </Link>
       </div>
@@ -125,7 +145,7 @@ export function DiaryDetailPage() {
     <div className="app-shell">
       <AppHeader
         left={
-          <Link to="/" className="btn-ghost">
+          <Link to={domainListPath(domain)} className="btn-ghost">
             ← 返回
           </Link>
         }
@@ -135,16 +155,24 @@ export function DiaryDetailPage() {
       <main className="app-main detail">
         <div className="detail-meta-row">
           <time className="muted">{entry.entryDate}</time>
-          <span className={`category-chip category-chip--${entry.category || "review"}`}>
-            {categoryLabel(entry.category)}
-          </span>
+          {isStock ? (
+            <span
+              className={`category-chip category-chip--${entry.category || "review"}`}
+            >
+              {categoryLabel(entry.category)}
+            </span>
+          ) : (
+            <span className={`domain-chip domain-chip--${domain}`}>
+              {domainLabel(domain)}
+            </span>
+          )}
           {entry.pinned && <span className="pin-badge">置顶</span>}
         </div>
         <h1 className="entry-title lg">
           <span>{entry.title}</span>
-          <MoodFace id={entry.mood} size={32} />
+          {(isStock || domain === "life") && <MoodFace id={entry.mood} size={32} />}
         </h1>
-        {entry.category !== "mindset" && (
+        {isStock && entry.category !== "mindset" && (
           <div className="entry-meta">
             <span className={pnlClass(entry.pnlDay)}>
               当日 {formatPnl(entry.pnlDay)}
@@ -155,14 +183,14 @@ export function DiaryDetailPage() {
           </div>
         )}
 
-        {entry.marketSnapshot && entry.category !== "mindset" && (
+        {isStock && entry.marketSnapshot && entry.category !== "mindset" && (
           <MarketCard date={entry.entryDate} snapshot={entry.marketSnapshot} />
         )}
 
         <ProseGallery
           html={html}
           content={entry.content}
-          stocks={stocks}
+          stocks={isStock ? stocks : undefined}
           compactStocks={false}
         />
         {deleteError && (
@@ -200,13 +228,9 @@ export function DiaryDetailPage() {
               onClick={() => void onTogglePin()}
               disabled={pinning || deleting}
             >
-              {pinning
-                ? "处理中…"
-                : entry.pinned
-                  ? "取消置顶"
-                  : "置顶"}
+              {pinning ? "处理中…" : entry.pinned ? "取消置顶" : "置顶"}
             </button>
-            <Link to={`/entries/${entry.id}/edit`} className="btn-primary">
+            <Link to={domainEditPath(domain, entry.id)} className="btn-primary">
               编辑
             </Link>
             <button

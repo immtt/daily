@@ -47,7 +47,9 @@ model DiaryEntry {
   userId         String    @map("user_id") @db.Uuid
   title          String    @db.VarChar(200)
   entryDate      DateTime  @map("entry_date") @db.Date
-  /// review=复盘 mindset=心法
+  /// stock=股票 reading=读书 life=生活
+  domain         String    @default("stock") @db.VarChar(16)
+  /// review=复盘 mindset=心法（仅 stock）
   category       String    @default("review") @db.VarChar(16)
   pinned         Boolean   @default(false)
   pinnedAt       DateTime? @map("pinned_at") @db.Timestamptz(6)
@@ -67,6 +69,7 @@ model DiaryEntry {
   @@index([userId, entryDate(sort: Desc)], map: "idx_diary_entries_user_date")
   @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
   @@index([userId, category], map: "idx_diary_entries_user_category")
+  @@index([userId, domain], map: "idx_diary_entries_user_domain")
   @@index([userId, pinned, pinnedAt(sort: Desc)], map: "idx_diary_entries_user_pinned")
   @@map("diary_entries")
 }

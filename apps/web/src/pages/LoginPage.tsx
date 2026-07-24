@@ -32,7 +32,7 @@ export function LoginPage() {
       </div>
       <div className="auth-card">
         <h1 className="brand">增长日记</h1>
-        <p className="auth-sub">记录每一次市场思考</p>
+        <p className="auth-sub">记录股票、读书与生活</p>
         <form onSubmit={onSubmit} className="auth-form">
           <label>
             用户名

@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: "增长日记",
         short_name: "增长日记",
-        description: "多端同步的股票增长日记",
+        description: "记录股票、读书与生活的增长日记",
         theme_color: "#c41e3a",
         background_color: "#fff9f5",
         display: "standalone",

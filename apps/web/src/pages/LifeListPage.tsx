@@ -1,0 +1,1 @@
+export { LifeListPage } from "./SimpleEntryListPage";

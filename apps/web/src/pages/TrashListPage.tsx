@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { api, type DiaryEntry } from "../api/client";
 import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
+import {
+  type EntryDomain,
+  domainLabel,
+  isEntryDomain,
+  resolveEntryDomain,
+} from "../lib/domain";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
 import { StockTagRow } from "../components/ProseGallery";
+
+type DomainFilter = "" | EntryDomain;
 
 function formatPurgeAt(iso?: string) {
   if (!iso) return "";
@@ -18,6 +26,12 @@ function formatPurgeAt(iso?: string) {
 
 export function TrashListPage() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const domainParam = searchParams.get("domain") ?? "";
+  const domainFilter: DomainFilter =
+    domainParam && isEntryDomain(domainParam) ? domainParam : "";
+
+  const navDomain: EntryDomain = domainFilter || "stock";
   const [items, setItems] = useState<DiaryEntry[]>([]);
   const [retentionDays, setRetentionDays] = useState(7);
   const [loading, setLoading] = useState(true);
@@ -26,15 +40,22 @@ export function TrashListPage() {
   useEffect(() => {
     setLoading(true);
     setError("");
+    const params: Record<string, string> = {};
+    if (domainFilter) params.domain = domainFilter;
     api
-      .listTrash()
+      .listTrash(params)
       .then((res) => {
         setItems(res.items);
         setRetentionDays(res.retentionDays);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "加载失败"))
       .finally(() => setLoading(false));
-  }, [location.key]);
+  }, [location.key, domainFilter]);
+
+  function onDomainFilter(next: DomainFilter) {
+    if (next) setSearchParams({ domain: next });
+    else setSearchParams({});
+  }
 
   return (
     <div className="app-shell">
@@ -46,11 +67,37 @@ export function TrashListPage() {
         }
       />
 
-      <HomeTabNav active="trash" />
+      <HomeTabNav
+        active="trash"
+        domain={navDomain}
+        domainLabel={domainFilter ? domainLabel(domainFilter) : "全部"}
+      />
 
       <main className="app-main">
+        <div className="category-tabs" role="tablist" aria-label="方向筛选">
+          {(
+            [
+              { id: "" as DomainFilter, label: "全部" },
+              { id: "stock" as DomainFilter, label: "股票" },
+              { id: "reading" as DomainFilter, label: "读书" },
+              { id: "life" as DomainFilter, label: "生活" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              role="tab"
+              aria-selected={domainFilter === t.id}
+              className={`category-tab ${domainFilter === t.id ? "active" : ""}`}
+              onClick={() => onDomainFilter(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <p className="trash-hint muted">
-          删除的复盘保留 {retentionDays} 天，到期自动清除。可恢复或彻底删除。
+          删除的笔记保留 {retentionDays} 天，到期自动清除。可恢复或彻底删除。
         </p>
 
         {error && <p className="form-error">{error}</p>}
@@ -60,35 +107,58 @@ export function TrashListPage() {
           <p className="muted center empty">废纸篓是空的</p>
         ) : (
           <ul className="entry-list">
-            {items.map((e) => (
-              <li key={e.id}>
-                <Link to={`/trash/${e.id}`} className="entry-card trash-card">
-                  <div className="entry-top">
-                    <div className="entry-top-left">
-                      <time>{e.entryDate}</time>
-                      <span
-                        className={`category-chip category-chip--${e.category || "review"}`}
-                      >
-                        {categoryLabel(e.category)}
+            {items.map((e) => {
+              const entryDomain = resolveEntryDomain(e);
+              const isStock = entryDomain === "stock";
+              return (
+                <li key={e.id}>
+                  <Link
+                    to={`/trash/${e.id}`}
+                    className="entry-card trash-card"
+                  >
+                    <div className="entry-top">
+                      <div className="entry-top-left">
+                        <time>{e.entryDate}</time>
+                        <span className={`domain-chip domain-chip--${entryDomain}`}>
+                          {domainLabel(entryDomain)}
+                        </span>
+                        {isStock && (
+                          <span
+                            className={`category-chip category-chip--${e.category || "review"}`}
+                          >
+                            {categoryLabel(e.category)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="muted tiny">
+                        {e.purgeAt ? `${formatPurgeAt(e.purgeAt)} 清除` : ""}
                       </span>
                     </div>
-                    <span className="muted tiny">
-                      {e.purgeAt
-                        ? `${formatPurgeAt(e.purgeAt)} 清除`
-                        : ""}
-                    </span>
-                  </div>
-                  <h2 className="entry-title">{e.title}</h2>
-                  <div className="entry-meta entry-meta--slot">
-                    <span className={pnlClass(e.pnlDay)}>
-                      当日 {formatPnl(e.pnlDay)}
-                    </span>
-                    <MoodFace id={e.mood} size={24} />
-                  </div>
-                  <StockTagRow stocks={e.stocks} compact max={3} />
-                </Link>
-              </li>
-            ))}
+                    <h2 className="entry-title">{e.title}</h2>
+                    {isStock ? (
+                      <>
+                        <div className="entry-meta entry-meta--slot">
+                          <span className={pnlClass(e.pnlDay)}>
+                            当日 {formatPnl(e.pnlDay)}
+                          </span>
+                          <MoodFace id={e.mood} size={24} />
+                        </div>
+                        <StockTagRow stocks={e.stocks} compact max={3} />
+                      </>
+                    ) : (
+                      <>
+                        <div className="entry-meta entry-meta--slot">
+                          {entryDomain === "life" ? (
+                            <MoodFace id={e.mood} size={24} />
+                          ) : null}
+                        </div>
+                        <div className="stock-tags stock-tags--slot" />
+                      </>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </main>

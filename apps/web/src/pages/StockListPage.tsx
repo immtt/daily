@@ -7,6 +7,7 @@ import {
   pnlClass,
   type EntryCategory,
 } from "../lib/format";
+import { domainNewPath } from "../lib/domain";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
@@ -14,7 +15,7 @@ import { StockTagRow } from "../components/ProseGallery";
 
 type CategoryFilter = "" | EntryCategory;
 
-export function DiaryListPage() {
+export function StockListPage() {
   const location = useLocation();
   const [items, setItems] = useState<DiaryEntry[]>([]);
   const [from, setFrom] = useState("");
@@ -31,14 +32,13 @@ export function DiaryListPage() {
     setLoading(true);
     setError("");
     try {
-      const params: Record<string, string> = { from, to };
+      const params: Record<string, string> = { domain: "stock", from, to };
       if (nextCategory) params.category = nextCategory;
       if (nextCategory === "mindset") {
         if (keyword.trim()) params.q = keyword.trim();
       } else if (nextCategory === "review") {
         if (stockCode) params.stockCode = stockCode;
       } else {
-        // 全部：有股票码走股票，否则走关键字
         if (stockCode) params.stockCode = stockCode;
         else if (keyword.trim()) params.q = keyword.trim();
       }
@@ -71,7 +71,7 @@ export function DiaryListPage() {
         }
       />
 
-      <HomeTabNav active="diary" />
+      <HomeTabNav active="diary" domain="stock" domainLabel="股票" />
 
       <main className="app-main">
         <div className="category-tabs" role="tablist" aria-label="日记分类">
@@ -139,7 +139,7 @@ export function DiaryListPage() {
             {items.map((e) => (
               <li key={e.id}>
                 <Link
-                  to={`/entries/${e.id}`}
+                  to={`/stock/${e.id}`}
                   className={`entry-card ${e.pinned ? "entry-card--pinned" : ""}`}
                 >
                   <div className="entry-top">
@@ -175,7 +175,7 @@ export function DiaryListPage() {
         )}
       </main>
 
-      <Link to="/entries/new" className="fab-write" aria-label="写日记">
+      <Link to={domainNewPath("stock")} className="fab-write" aria-label="写股票笔记">
         +
       </Link>
     </div>

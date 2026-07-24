@@ -1,10 +1,14 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import type { ReactNode } from "react";
+import { isEntryDomain } from "./lib/domain";
 import { useAuth } from "./hooks/useAuth";
 import { LoginPage } from "./pages/LoginPage";
-import { DiaryListPage } from "./pages/DiaryListPage";
-import { DiaryDetailPage } from "./pages/DiaryDetailPage";
-import { DiaryEditPage } from "./pages/DiaryEditPage";
+import { HubPage } from "./pages/HubPage";
+import { StockListPage } from "./pages/StockListPage";
+import { ReadingListPage } from "./pages/ReadingListPage";
+import { LifeListPage } from "./pages/LifeListPage";
+import { EntryEditPage } from "./pages/EntryEditPage";
+import { EntryDetailPage } from "./pages/EntryDetailPage";
 import { TrashListPage } from "./pages/TrashListPage";
 import { TrashDetailPage } from "./pages/TrashDetailPage";
 
@@ -15,6 +19,26 @@ function Private({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function LegacyEntryRedirect() {
+  const { pathname } = useLocation();
+  const path = pathname.replace(/^\/entries/, "/stock");
+  return <Navigate to={path} replace />;
+}
+
+function DomainEntryEdit() {
+  const { domain } = useParams<{ domain: string }>();
+  if (!domain || !isEntryDomain(domain)) return <Navigate to="/" replace />;
+  return <EntryEditPage domain={domain} />;
+}
+
+function DomainEntryDetail() {
+  const { domain, id } = useParams<{ domain: string; id: string }>();
+  if (!domain || !isEntryDomain(domain) || !id || id === "new") {
+    return <Navigate to="/" replace />;
+  }
+  return <EntryDetailPage domain={domain} />;
+}
+
 export function App() {
   return (
     <Routes>
@@ -23,31 +47,55 @@ export function App() {
         path="/"
         element={
           <Private>
-            <DiaryListPage />
+            <HubPage />
           </Private>
         }
       />
       <Route
-        path="/entries/new"
+        path="/stock"
         element={
           <Private>
-            <DiaryEditPage />
+            <StockListPage />
           </Private>
         }
       />
       <Route
-        path="/entries/:id/edit"
+        path="/reading"
         element={
           <Private>
-            <DiaryEditPage />
+            <ReadingListPage />
           </Private>
         }
       />
       <Route
-        path="/entries/:id"
+        path="/life"
         element={
           <Private>
-            <DiaryDetailPage />
+            <LifeListPage />
+          </Private>
+        }
+      />
+      <Route
+        path="/:domain/new"
+        element={
+          <Private>
+            <DomainEntryEdit />
+          </Private>
+        }
+      />
+      <Route
+        path="/:domain/:id/edit"
+        element={
+          <Private>
+            <DomainEntryEdit />
+          </Private>
+        }
+      />
+      <Route
+        path="/:domain/:id"
+        element={
+          <Private>
+            <DomainEntryDetail />
           </Private>
         }
       />
@@ -67,6 +115,7 @@ export function App() {
           </Private>
         }
       />
+      <Route path="/entries/*" element={<LegacyEntryRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

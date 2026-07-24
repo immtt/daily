@@ -11,12 +11,24 @@ import {
   todayStr,
   type EntryCategory,
 } from "../lib/format";
+import {
+  type EntryDomain,
+  domainDetailPath,
+  domainListPath,
+  resolveEntryDomain,
+} from "../lib/domain";
 import { normalizeContentStructure } from "../lib/normalizeContent";
 
-export function DiaryEditPage() {
+type Props = {
+  domain: EntryDomain;
+};
+
+export function EntryEditPage({ domain }: Props) {
   const { id } = useParams();
   const isNew = !id || id === "new";
   const nav = useNavigate();
+  const isStock = domain === "stock";
+  const isLife = domain === "life";
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -44,6 +56,10 @@ export function DiaryEditPage() {
     void api
       .getEntry(id!)
       .then((e: DiaryEntry) => {
+        if (resolveEntryDomain(e) !== domain) {
+          nav(domainDetailPath(resolveEntryDomain(e), e.id), { replace: true });
+          return;
+        }
         setTitle(e.title);
         setEntryDate(e.entryDate);
         setCategory(e.category === "mindset" ? "mindset" : "review");
@@ -55,51 +71,70 @@ export function DiaryEditPage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "加载失败"))
       .finally(() => setLoading(false));
-  }, [isNew, id]);
+  }, [isNew, id, domain, nav]);
 
   async function onSave() {
     if (!title.trim()) {
       setError("请填写标题");
       return;
     }
-    if (category !== "review" && category !== "mindset") {
+    if (isStock && category !== "review" && category !== "mindset") {
       setError("请选择分类：复盘或心法");
       return;
     }
     setSaving(true);
     setError("");
     try {
-      const codes = extractCodesFromContent(content);
-      const looked = codes.length
-        ? await api.lookupStocks(codes)
-        : { items: [] };
-      const stocks = codes.map((code) => ({
-        code,
-        name: looked.items.find((s) => s.code === code)?.name || code,
-      }));
-      const body = {
+      const normalizedContent = normalizeContentStructure(content);
+      let stocks: Array<{ code: string; name: string }> = [];
+      if (isStock) {
+        const codes = extractCodesFromContent(normalizedContent);
+        const looked = codes.length
+          ? await api.lookupStocks(codes)
+          : { items: [] };
+        stocks = codes.map((code) => ({
+          code,
+          name: looked.items.find((s) => s.code === code)?.name || code,
+        }));
+      }
+      const body: Record<string, unknown> = {
+        domain,
         title: title.trim(),
         entryDate,
-        category,
-        pnlDay: pnlDay === "" ? null : Number(pnlDay),
-        pnlTotal: pnlTotal === "" ? null : Number(pnlTotal),
-        mood,
-        marketSnapshot,
-        content: normalizeContentStructure(content),
-        stocks,
+        content: normalizedContent,
       };
+      if (isStock) {
+        body.category = category;
+        body.pnlDay = pnlDay === "" ? null : Number(pnlDay);
+        body.pnlTotal = pnlTotal === "" ? null : Number(pnlTotal);
+        body.mood = mood;
+        body.marketSnapshot = marketSnapshot;
+        body.stocks = stocks;
+      } else if (isLife) {
+        body.mood = mood;
+        body.stocks = [];
+      } else {
+        body.stocks = [];
+      }
       if (isNew) {
         const created = await api.createEntry(body);
-        nav(`/entries/${created.id}`, { replace: true });
+        nav(domainDetailPath(domain, created.id), { replace: true });
       } else {
         await api.updateEntry(id!, body);
-        nav(`/entries/${id}`, { replace: true });
+        nav(domainDetailPath(domain, id!), { replace: true });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
       setSaving(false);
     }
   }
+
+  const backTo = isNew ? domainListPath(domain) : domainDetailPath(domain, id!);
+  const domainTitles: Record<EntryDomain, string> = {
+    stock: "股票",
+    reading: "读书",
+    life: "生活",
+  };
 
   if (loading) {
     return (
@@ -113,39 +148,53 @@ export function DiaryEditPage() {
     <div className="app-shell">
       <AppHeader
         left={
-          <Link to={isNew ? "/" : `/entries/${id}`} className="btn-ghost">
+          <Link to={backTo} className="btn-ghost">
             ← 返回
           </Link>
         }
-        center={<div className="brand-sm">{isNew ? "写日记" : "编辑"}</div>}
+        center={
+          <div className="brand-sm">
+            {isNew ? `写${domainTitles[domain]}` : "编辑"}
+          </div>
+        }
       />
 
       <main className="app-main edit">
-        <div className="field">
-          <span>
-            分类 <em className="req">必选</em>
-          </span>
-          <div className="category-pick">
-            {ENTRY_CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`category-pick-card ${category === c.id ? "active" : ""}`}
-                onClick={() => setCategory(c.id)}
-              >
-                <strong>{c.label}</strong>
-                <span>{c.hint}</span>
-              </button>
-            ))}
+        {isStock && (
+          <div className="field">
+            <span>
+              分类 <em className="req">必选</em>
+            </span>
+            <div className="category-pick">
+              {ENTRY_CATEGORIES.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`category-pick-card ${category === c.id ? "active" : ""}`}
+                  onClick={() => setCategory(c.id)}
+                >
+                  <strong>{c.label}</strong>
+                  <span>{c.hint}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <label className="field">
           标题
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={category === "mindset" ? "一条可复用的心法" : "今日复盘要点"}
+            placeholder={
+              isStock
+                ? category === "mindset"
+                  ? "一条可复用的心法"
+                  : "今日复盘要点"
+                : domain === "reading"
+                  ? "书名或读书笔记标题"
+                  : "生活记录标题"
+            }
             maxLength={200}
           />
         </label>
@@ -159,7 +208,7 @@ export function DiaryEditPage() {
           />
         </label>
 
-        {category === "review" && (
+        {isStock && category === "review" && (
           <div className="field-row">
             <label className="field">
               当日盈亏
@@ -184,25 +233,27 @@ export function DiaryEditPage() {
           </div>
         )}
 
-        <div className="field">
-          <span>情绪</span>
-          <div className="mood-row">
-            {MOODS.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={`mood-btn ${mood === m.id ? "active" : ""}`}
-                onClick={() => setMood(mood === m.id ? null : m.id)}
-                title={m.label}
-                aria-label={m.label}
-              >
-                <MoodFace id={m.id} size={28} />
-              </button>
-            ))}
+        {(isStock || isLife) && (
+          <div className="field">
+            <span>情绪</span>
+            <div className="mood-row">
+              {MOODS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`mood-btn ${mood === m.id ? "active" : ""}`}
+                  onClick={() => setMood(mood === m.id ? null : m.id)}
+                  title={m.label}
+                  aria-label={m.label}
+                >
+                  <MoodFace id={m.id} size={28} />
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {category === "review" && (
+        {isStock && category === "review" && (
           <MarketCard
             date={entryDate}
             snapshot={marketSnapshot}
@@ -213,7 +264,18 @@ export function DiaryEditPage() {
 
         <div className="field">
           <span>正文</span>
-          <DiaryEditor value={content} onChange={setContent} />
+          <DiaryEditor
+            value={content}
+            onChange={setContent}
+            enableStockTagify={isStock}
+            placeholder={
+              isStock
+                ? undefined
+                : domain === "reading"
+                  ? "摘录、感想、可复用的观点…"
+                  : "记录今天的生活与想法…"
+            }
+          />
         </div>
 
         {error && <p className="form-error">{error}</p>}

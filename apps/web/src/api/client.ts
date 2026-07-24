@@ -36,6 +36,7 @@ export type DiaryEntry = {
   id: string;
   title: string;
   entryDate: string;
+  domain: "stock" | "reading" | "life";
   category: "review" | "mindset";
   pinned?: boolean;
   pinnedAt?: string | null;

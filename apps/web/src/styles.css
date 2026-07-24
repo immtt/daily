@@ -864,6 +864,115 @@ input {
   background: var(--nav-bg);
   border-bottom: 1px solid var(--line);
 }
+.module-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.module-home-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.module-nav-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.hub-main {
+  padding-top: 8px;
+}
+.hub-lead {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.hub-grid {
+  display: grid;
+  gap: 14px;
+}
+.hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.hub-card:active {
+  transform: scale(0.99);
+}
+.hub-card--stock {
+  border-left: 4px solid var(--gold);
+}
+.hub-card--reading {
+  border-left: 4px solid #6b8aad;
+}
+.hub-card--life {
+  border-left: 4px solid #7c9a6e;
+}
+.hub-card-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.hub-card-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--brand-deep);
+}
+.hub-card-hint {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.domain-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  line-height: 1.4;
+}
+.domain-chip--stock {
+  color: var(--brand-deep);
+  background: var(--gold-soft);
+}
+.domain-chip--reading {
+  color: #4a6280;
+  background: rgba(107, 138, 173, 0.14);
+  border-color: rgba(107, 138, 173, 0.35);
+}
+.domain-chip--life {
+  color: #4a6b42;
+  background: rgba(124, 154, 110, 0.14);
+  border-color: rgba(124, 154, 110, 0.35);
+}
+
+.filter-bar--simple .filter-keyword,
+.filter-bar--simple button {
+  grid-column: 1 / -1;
+}
+.entry-card--simple {
+  min-height: 120px;
+}
+
 .home-tab-bar {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1520,5 +1629,8 @@ input {
   .filter-bar input:nth-child(4),
   .filter-bar button {
     grid-column: auto;
+  }
+  .hub-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }

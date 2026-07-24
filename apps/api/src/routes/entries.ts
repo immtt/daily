@@ -13,11 +13,13 @@ const stockSchema = z.object({
 });
 
 const categorySchema = z.enum(["review", "mindset"]);
+const domainSchema = z.enum(["stock", "reading", "life"]);
 
 const entryBodySchema = z.object({
+  domain: domainSchema.default("stock"),
   title: z.string().min(1).max(200),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  category: categorySchema,
+  category: categorySchema.optional(),
   stocks: z.array(stockSchema).optional().default([]),
   pnlDay: z.union([z.number(), z.string(), z.null()]).optional(),
   pnlTotal: z.union([z.number(), z.string(), z.null()]).optional(),
@@ -27,6 +29,16 @@ const entryBodySchema = z.object({
 });
 
 const activeOnly = { deletedAt: null } as const;
+
+function parseDomain(v: string | undefined) {
+  const parsed = domainSchema.safeParse(v);
+  return parsed.success ? parsed.data : null;
+}
+
+function normalizeDomain(v: string | null | undefined): "stock" | "reading" | "life" {
+  if (v === "reading" || v === "life") return v;
+  return "stock";
+}
 
 async function enrichStocks(stocks: Array<{ code: string; name: string }>) {
   if (stocks.length === 0) return stocks;
@@ -49,6 +61,7 @@ function serializeEntry(
     id: string;
     title: string;
     entryDate: Date;
+    domain: string;
     category: string;
     pinned?: boolean;
     pinnedAt?: Date | null;
@@ -64,10 +77,12 @@ function serializeEntry(
   },
   withContent = false
 ) {
+  const domain = normalizeDomain(e.domain);
   const base: Record<string, unknown> = {
     id: e.id,
     title: e.title,
     entryDate: formatDate(e.entryDate),
+    domain,
     category: e.category === "mindset" ? "mindset" : "review",
     pinned: Boolean(e.pinned),
     pinnedAt: e.pinnedAt ? e.pinnedAt.toISOString() : null,
@@ -116,6 +131,82 @@ async function resolveStocks(
   });
 }
 
+type ParsedEntryBody = z.infer<typeof entryBodySchema>;
+
+function validateEntryBody(
+  data: ParsedEntryBody,
+  existingDomain?: string
+): { ok: true; domain: "stock" | "reading" | "life"; data: ParsedEntryBody } | { ok: false; message: string } {
+  const domain = existingDomain
+    ? normalizeDomain(existingDomain)
+    : normalizeDomain(data.domain);
+
+  if (domain === "stock") {
+    if (!data.category) {
+      return { ok: false, message: "股票笔记请选择分类：复盘或心法" };
+    }
+    return { ok: true, domain, data: { ...data, domain: "stock", category: data.category } };
+  }
+
+  if (domain === "reading") {
+    return {
+      ok: true,
+      domain,
+      data: {
+        ...data,
+        domain: "reading",
+        category: "review",
+        mood: null,
+        pnlDay: null,
+        pnlTotal: null,
+        marketSnapshot: null,
+        stocks: [],
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    domain,
+    data: {
+      ...data,
+      domain: "life",
+      category: "review",
+      pnlDay: null,
+      pnlTotal: null,
+      marketSnapshot: null,
+      stocks: [],
+    },
+  };
+}
+
+function buildEntryWriteData(
+  domain: "stock" | "reading" | "life",
+  data: ParsedEntryBody,
+  content: Prisma.InputJsonValue,
+  stocks: Array<{ code: string; name: string }>
+) {
+  const title = data.title.trim();
+  return {
+    title,
+    entryDate: parseDateOnly(data.entryDate),
+    domain,
+    category: domain === "stock" ? data.category! : "review",
+    searchText: buildSearchText(title, content),
+    pnlDay: domain === "stock" ? toNum(data.pnlDay) : null,
+    pnlTotal: domain === "stock" ? toNum(data.pnlTotal) : null,
+    mood: domain === "reading" ? null : (data.mood ?? null),
+    marketSnapshot:
+      domain === "stock" && data.marketSnapshot != null
+        ? data.marketSnapshot
+        : domain === "stock"
+          ? undefined
+          : null,
+    content,
+    stocks,
+  };
+}
+
 export async function entryRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
@@ -128,6 +219,8 @@ export async function entryRoutes(app: FastifyInstance) {
       userId: req.user.id,
       deletedAt: { not: null },
     };
+    const domain = parseDomain(q.domain);
+    if (domain) where.domain = domain;
     const [total, items] = await Promise.all([
       prisma.diaryEntry.count({ where }),
       prisma.diaryEntry.findMany({
@@ -192,12 +285,17 @@ export async function entryRoutes(app: FastifyInstance) {
   });
 
   // --- 正常日记 ---
-  app.get("/entries", async (req) => {
+  app.get("/entries", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
+    const domain = parseDomain(q.domain);
+    if (!domain) {
+      return sendError(reply, 400, "请指定 domain：stock / reading / life", "VALIDATION_ERROR");
+    }
     const page = Math.max(1, Number(q.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(q.pageSize) || 20));
     const where: Prisma.DiaryEntryWhereInput = {
       userId: req.user.id,
+      domain,
       ...activeOnly,
     };
     if (q.from || q.to) {
@@ -205,38 +303,39 @@ export async function entryRoutes(app: FastifyInstance) {
       if (q.from) where.entryDate.gte = parseDateOnly(q.from);
       if (q.to) where.entryDate.lte = parseDateOnly(q.to);
     }
-    if (q.category === "review" || q.category === "mindset") {
-      where.category = q.category;
-    }
     const keyword = (q.q || q.keyword || "").trim();
-    if (q.category === "mindset") {
-      // 心法：关键字搜标题+正文
-      if (keyword) {
+
+    if (domain === "stock") {
+      if (q.category === "review" || q.category === "mindset") {
+        where.category = q.category;
+      }
+      if (q.category === "mindset") {
+        if (keyword) where.searchText = { contains: keyword };
+      } else if (q.stockCode) {
+        const filter = await resolveStockFilter(prisma, q.stockCode);
+        if (filter.codes.length === 0 && !filter.nameContains) {
+          where.stocks = { some: { code: "__none__" } };
+        } else if (filter.nameContains) {
+          where.stocks = {
+            some: {
+              OR: [
+                ...(filter.codes.length
+                  ? [{ code: { in: filter.codes } }]
+                  : []),
+                { name: { contains: filter.nameContains } },
+              ],
+            },
+          };
+        } else {
+          where.stocks = { some: { code: { in: filter.codes } } };
+        }
+      } else if (keyword) {
         where.searchText = { contains: keyword };
       }
-    } else if (q.stockCode) {
-      // 复盘 / 全部：按股票筛选
-      const filter = await resolveStockFilter(prisma, q.stockCode);
-      if (filter.codes.length === 0 && !filter.nameContains) {
-        where.stocks = { some: { code: "__none__" } };
-      } else if (filter.nameContains) {
-        where.stocks = {
-          some: {
-            OR: [
-              ...(filter.codes.length
-                ? [{ code: { in: filter.codes } }]
-                : []),
-              { name: { contains: filter.nameContains } },
-            ],
-          },
-        };
-      } else {
-        where.stocks = { some: { code: { in: filter.codes } } };
-      }
     } else if (keyword) {
-      // 全部 Tab 也可用关键字
       where.searchText = { contains: keyword };
     }
+
     const [total, items] = await Promise.all([
       prisma.diaryEntry.count({ where }),
       prisma.diaryEntry.findMany({
@@ -269,21 +368,24 @@ export async function entryRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return sendError(reply, 400, "参数校验失败", "VALIDATION_ERROR");
     }
-    const data = parsed.data;
-    const stocks = await resolveStocks(data.stocks, data.content);
-    const content = data.content ?? { type: "doc", content: [] };
+    const validated = validateEntryBody(parsed.data);
+    if (!validated.ok) {
+      return sendError(reply, 400, validated.message, "VALIDATION_ERROR");
+    }
+    const data = validated.data;
+    const domain = validated.domain;
+    const content = (data.content ?? {
+      type: "doc",
+      content: [],
+    }) as Prisma.InputJsonValue;
+    const stocks =
+      domain === "stock" ? await resolveStocks(data.stocks ?? [], content) : [];
+    const write = buildEntryWriteData(domain, data, content, stocks);
     const entry = await prisma.diaryEntry.create({
       data: {
         userId: req.user.id,
-        title: data.title.trim(),
-        entryDate: parseDateOnly(data.entryDate),
-        category: data.category,
-        searchText: buildSearchText(data.title.trim(), content),
-        pnlDay: toNum(data.pnlDay),
-        pnlTotal: toNum(data.pnlTotal),
-        mood: data.mood ?? null,
-        marketSnapshot: data.marketSnapshot ?? undefined,
-        content,
+        ...write,
+        marketSnapshot: write.marketSnapshot ?? undefined,
         stocks: { create: stocks },
       },
       include: { stocks: true },
@@ -319,45 +421,68 @@ export async function entryRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return sendError(reply, 400, "参数校验失败", "VALIDATION_ERROR");
     }
-    const data = parsed.data;
+    const merged: ParsedEntryBody = {
+      domain: normalizeDomain(existing.domain),
+      title: parsed.data.title ?? existing.title,
+      entryDate:
+        parsed.data.entryDate ?? formatDate(existing.entryDate),
+      category:
+        (parsed.data.category as "review" | "mindset" | undefined) ??
+        (existing.category === "mindset" ? "mindset" : "review"),
+      stocks: parsed.data.stocks ?? [],
+      pnlDay:
+        parsed.data.pnlDay !== undefined
+          ? parsed.data.pnlDay
+          : existing.pnlDay == null
+            ? null
+            : Number(existing.pnlDay),
+      pnlTotal:
+        parsed.data.pnlTotal !== undefined
+          ? parsed.data.pnlTotal
+          : existing.pnlTotal == null
+            ? null
+            : Number(existing.pnlTotal),
+      mood:
+        parsed.data.mood !== undefined ? parsed.data.mood : existing.mood,
+      marketSnapshot:
+        parsed.data.marketSnapshot !== undefined
+          ? parsed.data.marketSnapshot
+          : existing.marketSnapshot,
+      content:
+        parsed.data.content !== undefined
+          ? parsed.data.content
+          : existing.content,
+    };
+    const validated = validateEntryBody(merged, existing.domain);
+    if (!validated.ok) {
+      return sendError(reply, 400, validated.message, "VALIDATION_ERROR");
+    }
+    const data = validated.data;
+    const domain = validated.domain;
+    const content = (data.content ?? {
+      type: "doc",
+      content: [],
+    }) as Prisma.InputJsonValue;
     const stocks =
-      data.stocks !== undefined || data.content !== undefined
-        ? await resolveStocks(
-            data.stocks ?? [],
-            data.content ?? existing.content
-          )
-        : null;
-    const nextTitle =
-      data.title !== undefined ? data.title.trim() : existing.title;
-    const nextContent =
-      data.content !== undefined ? data.content : existing.content;
-    const shouldRefreshSearch =
-      data.title !== undefined || data.content !== undefined;
+      domain === "stock"
+        ? await resolveStocks(data.stocks ?? [], content)
+        : [];
+    const write = buildEntryWriteData(domain, data, content, stocks);
     const entry = await prisma.$transaction(async (tx) => {
-      if (stocks) {
-        await tx.diaryStock.deleteMany({ where: { entryId: id } });
-      }
+      await tx.diaryStock.deleteMany({ where: { entryId: id } });
       return tx.diaryEntry.update({
         where: { id },
         data: {
-          ...(data.title !== undefined ? { title: data.title.trim() } : {}),
-          ...(data.entryDate !== undefined
-            ? { entryDate: parseDateOnly(data.entryDate) }
-            : {}),
-          ...(data.pnlDay !== undefined ? { pnlDay: toNum(data.pnlDay) } : {}),
-          ...(data.pnlTotal !== undefined
-            ? { pnlTotal: toNum(data.pnlTotal) }
-            : {}),
-          ...(data.category !== undefined ? { category: data.category } : {}),
-          ...(data.mood !== undefined ? { mood: data.mood } : {}),
-          ...(data.marketSnapshot !== undefined
-            ? { marketSnapshot: data.marketSnapshot }
-            : {}),
-          ...(data.content !== undefined ? { content: data.content } : {}),
-          ...(shouldRefreshSearch
-            ? { searchText: buildSearchText(nextTitle, nextContent) }
-            : {}),
-          ...(stocks ? { stocks: { create: stocks } } : {}),
+          title: write.title,
+          entryDate: write.entryDate,
+          category: write.category,
+          searchText: write.searchText,
+          pnlDay: write.pnlDay,
+          pnlTotal: write.pnlTotal,
+          mood: write.mood,
+          marketSnapshot: write.marketSnapshot ?? null,
+          content: write.content,
+          ...(stocks.length > 0 ? { stocks: { create: stocks } } : {}),
         },
         include: { stocks: true },
       });

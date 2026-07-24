@@ -10,9 +10,16 @@ import { ImageLightbox } from "./ImageLightbox";
 type Props = {
   value: unknown;
   onChange: (json: unknown) => void;
+  enableStockTagify?: boolean;
+  placeholder?: string;
 };
 
-export function DiaryEditor({ value, onChange }: Props) {
+export function DiaryEditor({
+  value,
+  onChange,
+  enableStockTagify = true,
+  placeholder,
+}: Props) {
   const lookupCache = useRef(new Map<string, string>());
   const timer = useRef<number | null>(null);
   const applying = useRef(false);
@@ -20,7 +27,7 @@ export function DiaryEditor({ value, onChange }: Props) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const editor = useEditor({
-    extensions: getEditorExtensions(),
+    extensions: getEditorExtensions(placeholder),
     content:
       normalizeContentStructure((value as object) || {
         type: "doc",
@@ -29,6 +36,7 @@ export function DiaryEditor({ value, onChange }: Props) {
     onUpdate: ({ editor: ed }) => {
       if (applying.current) return;
       onChange(ed.getJSON());
+      if (!enableStockTagify) return;
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => {
         void autoTagify(ed);
@@ -52,11 +60,13 @@ export function DiaryEditor({ value, onChange }: Props) {
         normalizeContentStructure(value) as object
       );
       applying.current = false;
-      window.setTimeout(() => {
-        void autoTagify(editor);
-      }, 200);
+      if (enableStockTagify) {
+        window.setTimeout(() => {
+          void autoTagify(editor);
+        }, 200);
+      }
     }
-  }, [value, editor]);
+  }, [value, editor, enableStockTagify]);
 
   useEffect(() => {
     const root = wrapRef.current;
@@ -81,7 +91,7 @@ export function DiaryEditor({ value, onChange }: Props) {
   }, [editor, value]);
 
   async function autoTagify(ed: NonNullable<typeof editor>) {
-    if (applying.current) return;
+    if (!enableStockTagify || applying.current) return;
 
     const json = ed.getJSON();
     const text = ed.getText();

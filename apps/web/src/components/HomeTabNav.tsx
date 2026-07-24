@@ -1,18 +1,31 @@
 import { Link } from "react-router-dom";
+import type { EntryDomain } from "../lib/domain";
+import { trashPath } from "../lib/domain";
 
 type Props = {
   active: "diary" | "trash";
+  domain: EntryDomain;
+  domainLabel: string;
 };
 
-export function HomeTabNav({ active }: Props) {
+export function HomeTabNav({ active, domain, domainLabel }: Props) {
   return (
     <div className="home-nav">
+      <div className="module-nav-row">
+        <Link to="/" className="module-home-link">
+          ← 首页
+        </Link>
+        <span className="module-nav-title">{domainLabel}</span>
+      </div>
       <nav className="home-tab-bar">
-        <Link to="/" className={active === "diary" ? "home-tab active" : "home-tab"}>
+        <Link
+          to={`/${domain}`}
+          className={active === "diary" ? "home-tab active" : "home-tab"}
+        >
           日记
         </Link>
         <Link
-          to="/trash"
+          to={trashPath(domain)}
           className={active === "trash" ? "home-tab active" : "home-tab"}
         >
           废纸篓
