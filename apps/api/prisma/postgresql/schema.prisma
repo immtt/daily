@@ -51,6 +51,8 @@ model DiaryEntry {
   domain         String    @default("stock") @db.VarChar(16)
   /// review=复盘 mindset=心法（仅 stock）
   category       String    @default("review") @db.VarChar(16)
+  /// 读书/生活子标签 slug
+  tag            String?   @db.VarChar(32)
   pinned         Boolean   @default(false)
   pinnedAt       DateTime? @map("pinned_at") @db.Timestamptz(6)
   /// 标题+正文纯文本，供心法关键字搜索
@@ -58,6 +60,8 @@ model DiaryEntry {
   pnlDay         Decimal?  @map("pnl_day") @db.Decimal(12, 2)
   pnlTotal       Decimal?  @map("pnl_total") @db.Decimal(12, 2)
   mood           String?   @db.VarChar(20)
+  /// life 域可选位置 { lat, lng, label?, capturedAt? }
+  location       Json?
   marketSnapshot Json?     @map("market_snapshot")
   content        Json
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
@@ -65,11 +69,13 @@ model DiaryEntry {
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stocks         DiaryStock[]
+  books          DiaryBook[]
 
   @@index([userId, entryDate(sort: Desc)], map: "idx_diary_entries_user_date")
   @@index([userId, deletedAt], map: "idx_diary_entries_user_trash")
   @@index([userId, category], map: "idx_diary_entries_user_category")
   @@index([userId, domain], map: "idx_diary_entries_user_domain")
+  @@index([userId, domain, tag], map: "idx_diary_entries_user_domain_tag")
   @@index([userId, pinned, pinnedAt(sort: Desc)], map: "idx_diary_entries_user_pinned")
   @@map("diary_entries")
 }
@@ -84,6 +90,17 @@ model DiaryStock {
   @@index([entryId], map: "idx_diary_stocks_entry")
   @@index([code], map: "idx_diary_stocks_code")
   @@map("diary_stocks")
+}
+
+model DiaryBook {
+  id      String     @id @default(uuid()) @db.Uuid
+  entryId String     @map("entry_id") @db.Uuid
+  title   String     @db.VarChar(128)
+  entry   DiaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId], map: "idx_diary_books_entry")
+  @@index([title], map: "idx_diary_books_title")
+  @@map("diary_books")
 }
 
 /// 大盘每日收盘快照（仅完整收盘可入库；盘中数据不入库）

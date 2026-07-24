@@ -10,7 +10,13 @@ import {
 } from "../lib/domain";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
+import { LifeGate } from "../components/LifeGate";
 import { MoodFace } from "../components/MoodFace";
+import { tagLabel } from "../lib/entryTags";
+import { isLifeUnlocked } from "../lib/lifeAccess";
+import { BookTagRow } from "../components/BookTagInput";
+import { LocationChip } from "../components/LocationField";
+import type { EntryLocation } from "../api/client";
 import { StockTagRow } from "../components/ProseGallery";
 
 type DomainFilter = "" | EntryDomain;
@@ -40,6 +46,11 @@ export function TrashListPage() {
   useEffect(() => {
     setLoading(true);
     setError("");
+    if (domainFilter === "life" && !isLifeUnlocked()) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     const params: Record<string, string> = {};
     if (domainFilter) params.domain = domainFilter;
     api
@@ -52,12 +63,30 @@ export function TrashListPage() {
       .finally(() => setLoading(false));
   }, [location.key, domainFilter]);
 
+  useEffect(() => {
+    function onLifeUnlock() {
+      if (domainFilter !== "life") return;
+      setLoading(true);
+      setError("");
+      api
+        .listTrash({ domain: "life" })
+        .then((res) => {
+          setItems(res.items);
+          setRetentionDays(res.retentionDays);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : "加载失败"))
+        .finally(() => setLoading(false));
+    }
+    window.addEventListener("life-unlocked", onLifeUnlock);
+    return () => window.removeEventListener("life-unlocked", onLifeUnlock);
+  }, [domainFilter]);
+
   function onDomainFilter(next: DomainFilter) {
     if (next) setSearchParams({ domain: next });
     else setSearchParams({});
   }
 
-  return (
+  const page = (
     <div className="app-shell">
       <AppHeader
         left={
@@ -129,6 +158,11 @@ export function TrashListPage() {
                             {categoryLabel(e.category)}
                           </span>
                         )}
+                        {!isStock && e.tag && (
+                          <span className={`tag-chip tag-chip--${e.tag}`}>
+                            {tagLabel(entryDomain, e.tag)}
+                          </span>
+                        )}
                       </div>
                       <span className="muted tiny">
                         {e.purgeAt ? `${formatPurgeAt(e.purgeAt)} 清除` : ""}
@@ -149,10 +183,19 @@ export function TrashListPage() {
                       <>
                         <div className="entry-meta entry-meta--slot">
                           {entryDomain === "life" ? (
-                            <MoodFace id={e.mood} size={24} />
+                            <>
+                              <MoodFace id={e.mood} size={24} />
+                              {e.location && (
+                                <LocationChip location={e.location as EntryLocation} />
+                              )}
+                            </>
                           ) : null}
                         </div>
-                        <div className="stock-tags stock-tags--slot" />
+                        {entryDomain === "reading" && (e.books?.length ?? 0) > 0 ? (
+                          <BookTagRow books={e.books ?? []} />
+                        ) : (
+                          <div className="stock-tags stock-tags--slot" />
+                        )}
                       </>
                     )}
                   </Link>
@@ -164,4 +207,9 @@ export function TrashListPage() {
       </main>
     </div>
   );
+
+  if (domainFilter === "life") {
+    return <LifeGate>{page}</LifeGate>;
+  }
+  return page;
 }

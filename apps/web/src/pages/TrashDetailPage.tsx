@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, type DiaryEntry } from "../api/client";
+import { api, type DiaryEntry, type EntryLocation } from "../api/client";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
+import { BookTagRow } from "../components/BookTagInput";
+import { LocationChip } from "../components/LocationField";
 import { enrichContentStocks } from "../lib/stockText";
 import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
 import {
@@ -14,6 +16,8 @@ import {
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
 import { ProseGallery } from "../components/ProseGallery";
+import { LifeGate } from "../components/LifeGate";
+import { tagLabel } from "../lib/entryTags";
 
 function formatDateTime(iso?: string) {
   if (!iso) return "—";
@@ -133,7 +137,8 @@ export function TrashDetailPage() {
   }
 
   return (
-    <div className="app-shell">
+    <LifeGate enabled={entryDomain === "life"}>
+      <div className="app-shell">
       <AppHeader
         left={
           <Link to={trashPath(entryDomain)} className="btn-ghost">
@@ -160,6 +165,11 @@ export function TrashDetailPage() {
               {categoryLabel(entry.category)}
             </span>
           )}
+          {!isStock && entry.tag && (
+            <span className={`tag-chip tag-chip--${entry.tag}`}>
+              {tagLabel(entryDomain, entry.tag)}
+            </span>
+          )}
         </div>
         <h1 className="entry-title lg">
           <span>{entry.title}</span>
@@ -175,6 +185,16 @@ export function TrashDetailPage() {
             <span className={pnlClass(entry.pnlTotal)}>
               累计 {formatPnl(entry.pnlTotal)}
             </span>
+          </div>
+        )}
+
+        {entryDomain === "reading" && (entry.books?.length ?? 0) > 0 && (
+          <BookTagRow books={entry.books ?? []} compact={false} />
+        )}
+
+        {entryDomain === "life" && entry.location && (
+          <div className="detail-location-row">
+            <LocationChip location={entry.location as EntryLocation} />
           </div>
         )}
 
@@ -233,5 +253,6 @@ export function TrashDetailPage() {
         )}
       </footer>
     </div>
+    </LifeGate>
   );
 }

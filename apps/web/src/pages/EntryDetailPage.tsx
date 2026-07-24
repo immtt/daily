@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, type DiaryEntry } from "../api/client";
+import { api, type DiaryEntry, type EntryLocation } from "../api/client";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
+import { BookTagRow } from "../components/BookTagInput";
+import { LocationChip } from "../components/LocationField";
 import { enrichContentStocks } from "../lib/stockText";
 import { formatPnl, categoryLabel, pnlClass } from "../lib/format";
 import {
@@ -12,6 +14,7 @@ import {
   domainListPath,
   resolveEntryDomain,
 } from "../lib/domain";
+import { tagLabel } from "../lib/entryTags";
 import { generateHTML } from "../lib/tiptapHtml";
 import { MoodFace } from "../components/MoodFace";
 import { ProseGallery } from "../components/ProseGallery";
@@ -162,9 +165,17 @@ export function EntryDetailPage({ domain }: Props) {
               {categoryLabel(entry.category)}
             </span>
           ) : (
-            <span className={`domain-chip domain-chip--${domain}`}>
-              {domainLabel(domain)}
-            </span>
+            <>
+              {entry.tag ? (
+                <span className={`tag-chip tag-chip--${entry.tag}`}>
+                  {tagLabel(domain, entry.tag)}
+                </span>
+              ) : (
+                <span className={`domain-chip domain-chip--${domain}`}>
+                  {domainLabel(domain)}
+                </span>
+              )}
+            </>
           )}
           {entry.pinned && <span className="pin-badge">置顶</span>}
         </div>
@@ -180,6 +191,16 @@ export function EntryDetailPage({ domain }: Props) {
             <span className={pnlClass(entry.pnlTotal)}>
               累计 {formatPnl(entry.pnlTotal)}
             </span>
+          </div>
+        )}
+
+        {domain === "reading" && (entry.books?.length ?? 0) > 0 && (
+          <BookTagRow books={entry.books ?? []} compact={false} />
+        )}
+
+        {domain === "life" && entry.location && (
+          <div className="detail-location-row">
+            <LocationChip location={entry.location as EntryLocation} />
           </div>
         )}
 

@@ -11,6 +11,7 @@ import { EntryEditPage } from "./pages/EntryEditPage";
 import { EntryDetailPage } from "./pages/EntryDetailPage";
 import { TrashListPage } from "./pages/TrashListPage";
 import { TrashDetailPage } from "./pages/TrashDetailPage";
+import { LifeGate } from "./components/LifeGate";
 
 function Private({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -28,7 +29,9 @@ function LegacyEntryRedirect() {
 function DomainEntryEdit() {
   const { domain } = useParams<{ domain: string }>();
   if (!domain || !isEntryDomain(domain)) return <Navigate to="/" replace />;
-  return <EntryEditPage domain={domain} />;
+  const page = <EntryEditPage domain={domain} />;
+  if (domain === "life") return <LifeGate>{page}</LifeGate>;
+  return page;
 }
 
 function DomainEntryDetail() {
@@ -36,7 +39,17 @@ function DomainEntryDetail() {
   if (!domain || !isEntryDomain(domain) || !id || id === "new") {
     return <Navigate to="/" replace />;
   }
-  return <EntryDetailPage domain={domain} />;
+  const page = <EntryDetailPage domain={domain} />;
+  if (domain === "life") return <LifeGate>{page}</LifeGate>;
+  return page;
+}
+
+function LifePrivate({ children }: { children: ReactNode }) {
+  return (
+    <Private>
+      <LifeGate>{children}</LifeGate>
+    </Private>
+  );
 }
 
 export function App() {
@@ -70,9 +83,9 @@ export function App() {
       <Route
         path="/life"
         element={
-          <Private>
+          <LifePrivate>
             <LifeListPage />
-          </Private>
+          </LifePrivate>
         }
       />
       <Route

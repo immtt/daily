@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { EntryDomain } from "../lib/domain";
 import { trashPath } from "../lib/domain";
+import { LifeLockButton } from "./LifeGate";
 
 type Props = {
   active: "diary" | "trash";
@@ -16,6 +17,7 @@ export function HomeTabNav({ active, domain, domainLabel }: Props) {
           ← 首页
         </Link>
         <span className="module-nav-title">{domainLabel}</span>
+        {domain === "life" && <LifeLockButton />}
       </div>
       <nav className="home-tab-bar">
         <Link

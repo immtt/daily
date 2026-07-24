@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api, type DiaryEntry } from "../api/client";
 import { domainNewPath } from "../lib/domain";
+import { tagLabel, tagsForDomain } from "../lib/entryTags";
+import { isLifeUnlocked } from "../lib/lifeAccess";
 import { AppHeader } from "../components/AppHeader";
 import { HomeTabNav } from "../components/HomeTabNav";
 import { MoodFace } from "../components/MoodFace";
+import { BookTagRow } from "../components/BookTagInput";
+import { LocationChip } from "../components/LocationField";
+import type { EntryLocation } from "../api/client";
 
 type SimpleListProps = {
   domain: "reading" | "life";
@@ -26,15 +31,22 @@ export function SimpleEntryListPage({
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [loading, setLoading] = useState(true);
+  const tagOptions = tagsForDomain(domain);
   const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
     setError("");
     try {
+      if (domain === "life" && !isLifeUnlocked()) {
+        setItems([]);
+        return;
+      }
       const params: Record<string, string> = { domain, from, to };
       if (keyword.trim()) params.q = keyword.trim();
+      if (tagFilter) params.tag = tagFilter;
       const res = await api.listEntries(params);
       setItems(res.items);
     } catch (e) {
@@ -47,7 +59,16 @@ export function SimpleEntryListPage({
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.key]);
+  }, [location.key, tagFilter]);
+
+  useEffect(() => {
+    function onLifeUnlock() {
+      void load();
+    }
+    window.addEventListener("life-unlocked", onLifeUnlock);
+    return () => window.removeEventListener("life-unlocked", onLifeUnlock);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain, from, to, keyword, tagFilter]);
 
   return (
     <div className="app-shell">
@@ -80,6 +101,32 @@ export function SimpleEntryListPage({
           </button>
         </section>
 
+        {tagOptions.length > 0 && (
+          <div className="category-tabs" role="tablist" aria-label="标签筛选">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tagFilter === ""}
+              className={`category-tab ${tagFilter === "" ? "active" : ""}`}
+              onClick={() => setTagFilter("")}
+            >
+              全部
+            </button>
+            {tagOptions.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tagFilter === t.id}
+                className={`category-tab ${tagFilter === t.id ? "active" : ""}`}
+                onClick={() => setTagFilter(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {error && <p className="form-error">{error}</p>}
         {loading ? (
           <p className="muted center">加载中…</p>
@@ -100,11 +147,23 @@ export function SimpleEntryListPage({
                       <span className={`domain-chip domain-chip--${domain}`}>
                         {domainLabel}
                       </span>
+                      {e.tag && (
+                        <span className={`tag-chip tag-chip--${e.tag}`}>
+                          {tagLabel(domain, e.tag)}
+                        </span>
+                      )}
                     </div>
                     {showMood ? <MoodFace id={e.mood} size={26} /> : <span />}
                   </div>
                   <h2 className="entry-title">{e.title}</h2>
-                  <div className="entry-meta entry-meta--slot" aria-hidden="true" />
+                  {domain === "reading" && (e.books?.length ?? 0) > 0 && (
+                    <BookTagRow books={e.books ?? []} />
+                  )}
+                  <div className="entry-meta entry-meta--slot">
+                    {domain === "life" && e.location && (
+                      <LocationChip location={e.location as EntryLocation} />
+                    )}
+                  </div>
                 </Link>
               </li>
             ))}

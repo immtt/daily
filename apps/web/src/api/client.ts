@@ -1,3 +1,5 @@
+import { getLifeAccessHeader } from "../lib/lifeAccess";
+
 export type User = {
   id: string;
   username: string;
@@ -6,6 +8,15 @@ export type User = {
 };
 
 export type StockRef = { code: string; name: string };
+
+export type BookRef = { title: string };
+
+export type EntryLocation = {
+  lat: number;
+  lng: number;
+  label?: string;
+  capturedAt?: string;
+};
 
 export type MarketSnapshot = {
   date: string;
@@ -38,6 +49,9 @@ export type DiaryEntry = {
   entryDate: string;
   domain: "stock" | "reading" | "life";
   category: "review" | "mindset";
+  tag?: string | null;
+  books?: BookRef[];
+  location?: EntryLocation | null;
   pinned?: boolean;
   pinnedAt?: string | null;
   stocks: StockRef[];
@@ -83,6 +97,9 @@ async function request<T>(
   }
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  for (const [key, value] of Object.entries(getLifeAccessHeader())) {
+    headers.set(key, value);
+  }
 
   let res: Response;
   try {

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, type DiaryEntry, type MarketSnapshot } from "../api/client";
+import { api, type DiaryEntry, type EntryLocation, type MarketSnapshot } from "../api/client";
 import { DiaryEditor, extractCodesFromContent } from "../components/DiaryEditor";
+import { BookTagInput } from "../components/BookTagInput";
+import { LocationField } from "../components/LocationField";
 import { MarketCard } from "../components/MarketCard";
 import { AppHeader } from "../components/AppHeader";
 import { MoodFace } from "../components/MoodFace";
@@ -18,6 +20,10 @@ import {
   resolveEntryDomain,
 } from "../lib/domain";
 import { normalizeContentStructure } from "../lib/normalizeContent";
+import {
+  tagsForDomain,
+  type EntryTagId,
+} from "../lib/entryTags";
 
 type Props = {
   domain: EntryDomain;
@@ -29,6 +35,8 @@ export function EntryEditPage({ domain }: Props) {
   const nav = useNavigate();
   const isStock = domain === "stock";
   const isLife = domain === "life";
+  const isReading = domain === "reading";
+  const tagOptions = tagsForDomain(domain);
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -38,6 +46,9 @@ export function EntryEditPage({ domain }: Props) {
   const [pnlDay, setPnlDay] = useState("");
   const [pnlTotal, setPnlTotal] = useState("");
   const [mood, setMood] = useState<string | null>(null);
+  const [tag, setTag] = useState<EntryTagId | "">("");
+  const [books, setBooks] = useState<string[]>([]);
+  const [location, setLocation] = useState<EntryLocation | null>(null);
   const [content, setContent] = useState<unknown>({
     type: "doc",
     content: [{ type: "paragraph" }],
@@ -66,6 +77,9 @@ export function EntryEditPage({ domain }: Props) {
         setPnlDay(e.pnlDay == null ? "" : String(e.pnlDay));
         setPnlTotal(e.pnlTotal == null ? "" : String(e.pnlTotal));
         setMood(e.mood);
+        setTag((e.tag as EntryTagId) || "");
+        setBooks((e.books ?? []).map((b) => b.title));
+        setLocation((e.location as EntryLocation) ?? null);
         setContent(e.content ?? { type: "doc", content: [] });
         setMarketSnapshot((e.marketSnapshot as MarketSnapshot) || null);
       })
@@ -80,6 +94,10 @@ export function EntryEditPage({ domain }: Props) {
     }
     if (isStock && category !== "review" && category !== "mindset") {
       setError("请选择分类：复盘或心法");
+      return;
+    }
+    if ((isReading || isLife) && !tag) {
+      setError("请选择标签");
       return;
     }
     setSaving(true);
@@ -112,8 +130,12 @@ export function EntryEditPage({ domain }: Props) {
         body.stocks = stocks;
       } else if (isLife) {
         body.mood = mood;
+        body.tag = tag;
+        body.location = location;
         body.stocks = [];
       } else {
+        body.tag = tag;
+        body.books = books.map((title) => ({ title }));
         body.stocks = [];
       }
       if (isNew) {
@@ -181,6 +203,27 @@ export function EntryEditPage({ domain }: Props) {
           </div>
         )}
 
+        {tagOptions.length > 0 && (
+          <div className="field">
+            <span>
+              标签 <em className="req">必选</em>
+            </span>
+            <div className="category-pick">
+              {tagOptions.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`category-pick-card ${tag === t.id ? "active" : ""}`}
+                  onClick={() => setTag(t.id)}
+                >
+                  <strong>{t.label}</strong>
+                  <span>{t.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <label className="field">
           标题
           <input
@@ -192,12 +235,20 @@ export function EntryEditPage({ domain }: Props) {
                   ? "一条可复用的心法"
                   : "今日复盘要点"
                 : domain === "reading"
-                  ? "书名或读书笔记标题"
+                  ? "读书笔记标题"
                   : "生活记录标题"
             }
             maxLength={200}
           />
         </label>
+
+        {isReading && (
+          <div className="field">
+            <span>书名</span>
+            <p className="muted tiny field-hint">可添加多本书，类似股票标签</p>
+            <BookTagInput value={books} onChange={setBooks} />
+          </div>
+        )}
 
         <label className="field">
           日期
@@ -250,6 +301,13 @@ export function EntryEditPage({ domain }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {isLife && (
+          <div className="field">
+            <span>位置（可选）</span>
+            <LocationField value={location} onChange={setLocation} />
           </div>
         )}
 

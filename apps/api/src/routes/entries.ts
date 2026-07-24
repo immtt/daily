@@ -1,15 +1,22 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { formatDate, parseDateOnly, sendError, toNum, entryIdPath } from "../lib/util.js";
 import { purgeAt, TRASH_RETENTION_DAYS } from "../services/trash.js";
 import { matchStocksInText, resolveStockFilter } from "../services/stockMatch.js";
 import { buildSearchText } from "../lib/searchText.js";
-import type { Prisma } from "@prisma/client";
+import { assertTagForDomain, hasLifeAccess } from "../lib/entryTags.js";
+import { normalizeBooks } from "../lib/entryBooks.js";
+import { assertLocationForDomain, locationSchema } from "../lib/entryLocation.js";
+import { Prisma } from "@prisma/client";
 
 const stockSchema = z.object({
   code: z.string().min(1).max(16),
   name: z.string().min(1).max(64),
+});
+
+const bookSchema = z.object({
+  title: z.string().min(1).max(128),
 });
 
 const categorySchema = z.enum(["review", "mindset"]);
@@ -24,11 +31,24 @@ const entryBodySchema = z.object({
   pnlDay: z.union([z.number(), z.string(), z.null()]).optional(),
   pnlTotal: z.union([z.number(), z.string(), z.null()]).optional(),
   mood: z.string().max(20).nullable().optional(),
+  tag: z.string().max(32).nullable().optional(),
+  books: z.array(bookSchema).optional().default([]),
+  location: locationSchema.optional(),
   marketSnapshot: z.any().nullable().optional(),
   content: z.any().optional().default({ type: "doc", content: [] }),
 });
 
+const entryInclude = { stocks: true, books: true } as const;
+
 const activeOnly = { deletedAt: null } as const;
+
+function toPrismaJsonField(
+  value: Prisma.InputJsonValue | null | undefined
+): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return Prisma.DbNull;
+  return value;
+}
 
 function parseDomain(v: string | undefined) {
   const parsed = domainSchema.safeParse(v);
@@ -38,6 +58,17 @@ function parseDomain(v: string | undefined) {
 function normalizeDomain(v: string | null | undefined): "stock" | "reading" | "life" {
   if (v === "reading" || v === "life") return v;
   return "stock";
+}
+
+function requireLifeAccess(
+  req: { headers: Record<string, string | string[] | undefined> },
+  reply: FastifyReply,
+  domain: string | null | undefined
+) {
+  if (normalizeDomain(domain) !== "life") return true;
+  if (hasLifeAccess(req.headers["x-life-access"])) return true;
+  sendError(reply, 403, "需要生活栏目访问密码", "FORBIDDEN");
+  return false;
 }
 
 async function enrichStocks(stocks: Array<{ code: string; name: string }>) {
@@ -63,6 +94,8 @@ function serializeEntry(
     entryDate: Date;
     domain: string;
     category: string;
+    tag?: string | null;
+    location?: Prisma.JsonValue | null;
     pinned?: boolean;
     pinnedAt?: Date | null;
     pnlDay: Prisma.Decimal | null;
@@ -74,6 +107,7 @@ function serializeEntry(
     createdAt: Date;
     updatedAt: Date;
     stocks: Array<{ code: string; name: string }>;
+    books?: Array<{ title: string }>;
   },
   withContent = false
 ) {
@@ -84,6 +118,9 @@ function serializeEntry(
     entryDate: formatDate(e.entryDate),
     domain,
     category: e.category === "mindset" ? "mindset" : "review",
+    tag: e.tag ?? null,
+    books: (e.books ?? []).map((b) => ({ title: b.title })),
+    location: e.location ?? null,
     pinned: Boolean(e.pinned),
     pinnedAt: e.pinnedAt ? e.pinnedAt.toISOString() : null,
     stocks: e.stocks.map((s) => ({ code: s.code, name: s.name })),
@@ -136,39 +173,48 @@ type ParsedEntryBody = z.infer<typeof entryBodySchema>;
 function validateEntryBody(
   data: ParsedEntryBody,
   existingDomain?: string
-): { ok: true; domain: "stock" | "reading" | "life"; data: ParsedEntryBody } | { ok: false; message: string } {
+):
+  | {
+      ok: true;
+      domain: "stock" | "reading" | "life";
+      data: ParsedEntryBody;
+      tag: string | null;
+      books: Array<{ title: string }>;
+      location: Prisma.InputJsonValue | null;
+    }
+  | { ok: false; message: string } {
   const domain = existingDomain
     ? normalizeDomain(existingDomain)
     : normalizeDomain(data.domain);
+
+  let normalized: ParsedEntryBody;
 
   if (domain === "stock") {
     if (!data.category) {
       return { ok: false, message: "股票笔记请选择分类：复盘或心法" };
     }
-    return { ok: true, domain, data: { ...data, domain: "stock", category: data.category } };
-  }
-
-  if (domain === "reading") {
-    return {
-      ok: true,
-      domain,
-      data: {
-        ...data,
-        domain: "reading",
-        category: "review",
-        mood: null,
-        pnlDay: null,
-        pnlTotal: null,
-        marketSnapshot: null,
-        stocks: [],
-      },
+    normalized = {
+      ...data,
+      domain: "stock",
+      category: data.category,
+      tag: null,
+      books: [],
+      location: null,
     };
-  }
-
-  return {
-    ok: true,
-    domain,
-    data: {
+  } else if (domain === "reading") {
+    normalized = {
+      ...data,
+      domain: "reading",
+      category: "review",
+      mood: null,
+      pnlDay: null,
+      pnlTotal: null,
+      marketSnapshot: null,
+      stocks: [],
+      location: null,
+    };
+  } else {
+    normalized = {
       ...data,
       domain: "life",
       category: "review",
@@ -176,7 +222,26 @@ function validateEntryBody(
       pnlTotal: null,
       marketSnapshot: null,
       stocks: [],
-    },
+      books: [],
+    };
+  }
+
+  const tagCheck = assertTagForDomain(domain, normalized.tag);
+  if (!tagCheck.ok) return tagCheck;
+
+  const locationCheck = assertLocationForDomain(domain, normalized.location);
+  if (!locationCheck.ok) return locationCheck;
+
+  const books =
+    domain === "reading" ? normalizeBooks(normalized.books ?? []) : [];
+
+  return {
+    ok: true,
+    domain,
+    data: normalized,
+    tag: tagCheck.tag,
+    books,
+    location: (locationCheck.location ?? null) as Prisma.InputJsonValue | null,
   };
 }
 
@@ -184,7 +249,9 @@ function buildEntryWriteData(
   domain: "stock" | "reading" | "life",
   data: ParsedEntryBody,
   content: Prisma.InputJsonValue,
-  stocks: Array<{ code: string; name: string }>
+  stocks: Array<{ code: string; name: string }>,
+  tag: string | null,
+  location: Prisma.InputJsonValue | null
 ) {
   const title = data.title.trim();
   return {
@@ -192,6 +259,8 @@ function buildEntryWriteData(
     entryDate: parseDateOnly(data.entryDate),
     domain,
     category: domain === "stock" ? data.category! : "review",
+    tag,
+    location,
     searchText: buildSearchText(title, content),
     pnlDay: domain === "stock" ? toNum(data.pnlDay) : null,
     pnlTotal: domain === "stock" ? toNum(data.pnlTotal) : null,
@@ -203,7 +272,6 @@ function buildEntryWriteData(
           ? undefined
           : null,
     content,
-    stocks,
   };
 }
 
@@ -211,7 +279,7 @@ export async function entryRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
   // --- 废纸篓（须在 /entries/:id 之前注册）---
-  app.get("/entries/trash", async (req) => {
+  app.get("/entries/trash", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     const page = Math.max(1, Number(q.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(q.pageSize) || 20));
@@ -220,12 +288,18 @@ export async function entryRoutes(app: FastifyInstance) {
       deletedAt: { not: null },
     };
     const domain = parseDomain(q.domain);
-    if (domain) where.domain = domain;
+    if (domain) {
+      if (!requireLifeAccess(req, reply, domain)) return;
+      where.domain = domain;
+    } else if (!hasLifeAccess(req.headers["x-life-access"])) {
+      where.domain = { not: "life" };
+    }
+    if (q.tag) where.tag = q.tag;
     const [total, items] = await Promise.all([
       prisma.diaryEntry.count({ where }),
       prisma.diaryEntry.findMany({
         where,
-        include: { stocks: true },
+        include: entryInclude,
         orderBy: [{ deletedAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -248,9 +322,10 @@ export async function entryRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const entry = await prisma.diaryEntry.findFirst({
       where: { id, userId: req.user.id, deletedAt: { not: null } },
-      include: { stocks: true },
+      include: entryInclude,
     });
     if (!entry) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, entry.domain)) return;
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },
       true
@@ -263,10 +338,11 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, deletedAt: { not: null } },
     });
     if (!existing) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, existing.domain)) return;
     const entry = await prisma.diaryEntry.update({
       where: { id },
       data: { deletedAt: null },
-      include: { stocks: true },
+      include: entryInclude,
     });
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },
@@ -280,6 +356,7 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, deletedAt: { not: null } },
     });
     if (!existing) return sendError(reply, 404, "废纸篓中不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, existing.domain)) return;
     await prisma.diaryEntry.delete({ where: { id } });
     return { ok: true };
   });
@@ -291,6 +368,7 @@ export async function entryRoutes(app: FastifyInstance) {
     if (!domain) {
       return sendError(reply, 400, "请指定 domain：stock / reading / life", "VALIDATION_ERROR");
     }
+    if (!requireLifeAccess(req, reply, domain)) return;
     const page = Math.max(1, Number(q.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(q.pageSize) || 20));
     const where: Prisma.DiaryEntryWhereInput = {
@@ -332,15 +410,21 @@ export async function entryRoutes(app: FastifyInstance) {
       } else if (keyword) {
         where.searchText = { contains: keyword };
       }
+    } else if (domain === "reading") {
+      if (q.bookTitle?.trim()) {
+        where.books = { some: { title: { contains: q.bookTitle.trim() } } };
+      }
+      if (keyword) where.searchText = { contains: keyword };
     } else if (keyword) {
       where.searchText = { contains: keyword };
     }
+    if (q.tag) where.tag = q.tag;
 
     const [total, items] = await Promise.all([
       prisma.diaryEntry.count({ where }),
       prisma.diaryEntry.findMany({
         where,
-        include: { stocks: true },
+        include: entryInclude,
         orderBy: [
           { pinned: "desc" },
           { pinnedAt: "desc" },
@@ -374,21 +458,42 @@ export async function entryRoutes(app: FastifyInstance) {
     }
     const data = validated.data;
     const domain = validated.domain;
+    if (!requireLifeAccess(req, reply, domain)) return;
     const content = (data.content ?? {
       type: "doc",
       content: [],
     }) as Prisma.InputJsonValue;
     const stocks =
       domain === "stock" ? await resolveStocks(data.stocks ?? [], content) : [];
-    const write = buildEntryWriteData(domain, data, content, stocks);
+    const write = buildEntryWriteData(
+      domain,
+      data,
+      content,
+      stocks,
+      validated.tag,
+      validated.location
+    );
     const entry = await prisma.diaryEntry.create({
       data: {
         userId: req.user.id,
-        ...write,
+        title: write.title,
+        entryDate: write.entryDate,
+        domain: write.domain,
+        category: write.category,
+        tag: write.tag,
+        location: toPrismaJsonField(write.location),
+        searchText: write.searchText,
+        pnlDay: write.pnlDay,
+        pnlTotal: write.pnlTotal,
+        mood: write.mood,
+        content: write.content,
         marketSnapshot: write.marketSnapshot ?? undefined,
         stocks: { create: stocks },
+        ...(validated.books.length > 0
+          ? { books: { create: validated.books } }
+          : {}),
       },
-      include: { stocks: true },
+      include: entryInclude,
     });
     return reply.status(201).send(
       serializeEntry(
@@ -402,9 +507,10 @@ export async function entryRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const entry = await prisma.diaryEntry.findFirst({
       where: { id, userId: req.user.id, ...activeOnly },
-      include: { stocks: true },
+      include: entryInclude,
     });
     if (!entry) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, entry.domain)) return;
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },
       true
@@ -415,8 +521,10 @@ export async function entryRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const existing = await prisma.diaryEntry.findFirst({
       where: { id, userId: req.user.id, ...activeOnly },
+      include: entryInclude,
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, existing.domain)) return;
     const parsed = entryBodySchema.partial().safeParse(req.body);
     if (!parsed.success) {
       return sendError(reply, 400, "参数校验失败", "VALIDATION_ERROR");
@@ -430,6 +538,10 @@ export async function entryRoutes(app: FastifyInstance) {
         (parsed.data.category as "review" | "mindset" | undefined) ??
         (existing.category === "mindset" ? "mindset" : "review"),
       stocks: parsed.data.stocks ?? [],
+      books:
+        parsed.data.books !== undefined
+          ? parsed.data.books
+          : existing.books.map((b) => ({ title: b.title })),
       pnlDay:
         parsed.data.pnlDay !== undefined
           ? parsed.data.pnlDay
@@ -444,6 +556,11 @@ export async function entryRoutes(app: FastifyInstance) {
             : Number(existing.pnlTotal),
       mood:
         parsed.data.mood !== undefined ? parsed.data.mood : existing.mood,
+      tag: parsed.data.tag !== undefined ? parsed.data.tag : existing.tag,
+      location:
+        parsed.data.location !== undefined
+          ? parsed.data.location
+          : (existing.location as ParsedEntryBody["location"]),
       marketSnapshot:
         parsed.data.marketSnapshot !== undefined
           ? parsed.data.marketSnapshot
@@ -467,15 +584,25 @@ export async function entryRoutes(app: FastifyInstance) {
       domain === "stock"
         ? await resolveStocks(data.stocks ?? [], content)
         : [];
-    const write = buildEntryWriteData(domain, data, content, stocks);
+    const write = buildEntryWriteData(
+      domain,
+      data,
+      content,
+      stocks,
+      validated.tag,
+      validated.location
+    );
     const entry = await prisma.$transaction(async (tx) => {
       await tx.diaryStock.deleteMany({ where: { entryId: id } });
+      await tx.diaryBook.deleteMany({ where: { entryId: id } });
       return tx.diaryEntry.update({
         where: { id },
         data: {
           title: write.title,
           entryDate: write.entryDate,
           category: write.category,
+          tag: write.tag,
+          location: toPrismaJsonField(write.location),
           searchText: write.searchText,
           pnlDay: write.pnlDay,
           pnlTotal: write.pnlTotal,
@@ -483,8 +610,11 @@ export async function entryRoutes(app: FastifyInstance) {
           marketSnapshot: write.marketSnapshot ?? null,
           content: write.content,
           ...(stocks.length > 0 ? { stocks: { create: stocks } } : {}),
+          ...(validated.books.length > 0
+            ? { books: { create: validated.books } }
+            : {}),
         },
-        include: { stocks: true },
+        include: entryInclude,
       });
     });
     return serializeEntry(
@@ -501,6 +631,7 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, ...activeOnly },
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, existing.domain)) return;
     const pinned =
       typeof body.pinned === "boolean" ? body.pinned : !existing.pinned;
     const entry = await prisma.diaryEntry.update({
@@ -509,7 +640,7 @@ export async function entryRoutes(app: FastifyInstance) {
         pinned,
         pinnedAt: pinned ? new Date() : null,
       },
-      include: { stocks: true },
+      include: entryInclude,
     });
     return serializeEntry(
       { ...entry, stocks: await enrichStocks(entry.stocks) },
@@ -524,10 +655,11 @@ export async function entryRoutes(app: FastifyInstance) {
       where: { id, userId: req.user.id, ...activeOnly },
     });
     if (!existing) return sendError(reply, 404, "日记不存在", "NOT_FOUND");
+    if (!requireLifeAccess(req, reply, existing.domain)) return;
     const entry = await prisma.diaryEntry.update({
       where: { id },
       data: { deletedAt: new Date() },
-      include: { stocks: true },
+      include: entryInclude,
     });
     return {
       ok: true,

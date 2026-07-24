@@ -121,18 +121,21 @@ export function DiaryEditor({
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/jpeg,image/png,image/webp";
+    input.multiple = true;
     input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        alert("图片不能超过 5MB");
-        return;
-      }
-      try {
-        const { url } = await api.upload(file);
-        editor.chain().focus().setImage({ src: url }).run();
-      } catch (e) {
-        alert(e instanceof Error ? e.message : "上传失败");
+      const files = input.files;
+      if (!files?.length) return;
+      for (const file of Array.from(files)) {
+        if (file.size > 5 * 1024 * 1024) {
+          alert(`${file.name} 超过 5MB，已跳过`);
+          continue;
+        }
+        try {
+          const { url } = await api.upload(file);
+          editor.chain().focus().setImage({ src: url }).run();
+        } catch (e) {
+          alert(e instanceof Error ? e.message : `${file.name} 上传失败`);
+        }
       }
     };
     input.click();
@@ -158,7 +161,7 @@ export function DiaryEditor({
           列表
         </button>
         <button type="button" onClick={() => void insertImage()}>
-          插图
+          插图（可多选）
         </button>
       </div>
       <EditorContent editor={editor} className="editor-body entry-body" />
