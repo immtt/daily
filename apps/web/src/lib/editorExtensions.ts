@@ -6,6 +6,34 @@ import { mergeAttributes } from "@tiptap/core";
 import { imageDisplaySrc } from "./images";
 
 const DiaryImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      src: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-full-src") ||
+          element.getAttribute("src"),
+        renderHTML: (attributes) => {
+          if (!attributes.src) return {};
+          return { src: attributes.src };
+        },
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "img[src]",
+        getAttrs: (dom) => {
+          const el = dom as HTMLElement;
+          return {
+            src: el.getAttribute("data-full-src") || el.getAttribute("src"),
+          };
+        },
+      },
+    ];
+  },
   renderHTML({ HTMLAttributes }) {
     const src = String(HTMLAttributes.src || "");
     return [

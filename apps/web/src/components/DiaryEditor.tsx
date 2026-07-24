@@ -23,6 +23,7 @@ export function DiaryEditor({
   const lookupCache = useRef(new Map<string, string>());
   const timer = useRef<number | null>(null);
   const applying = useRef(false);
+  const lastEditorJson = useRef("");
   const wrapRef = useRef<HTMLDivElement>(null);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,7 +37,9 @@ export function DiaryEditor({
       }) as object,
     onUpdate: ({ editor: ed }) => {
       if (applying.current) return;
-      onChange(ed.getJSON());
+      const json = ed.getJSON();
+      lastEditorJson.current = JSON.stringify(json);
+      onChange(json);
       if (!enableStockTagify) return;
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => {
@@ -53,13 +56,19 @@ export function DiaryEditor({
 
   useEffect(() => {
     if (!editor || applying.current) return;
-    const current = JSON.stringify(editor.getJSON());
-    const next = JSON.stringify(value ?? {});
-    if (current !== next && value) {
+    const valueJson = JSON.stringify(value ?? {});
+    if (valueJson === lastEditorJson.current) return;
+    const currentJson = JSON.stringify(editor.getJSON());
+    if (currentJson === valueJson) {
+      lastEditorJson.current = valueJson;
+      return;
+    }
+    if (value) {
       applying.current = true;
       editor.commands.setContent(
         normalizeContentStructure(value) as object
       );
+      lastEditorJson.current = JSON.stringify(editor.getJSON());
       applying.current = false;
       if (enableStockTagify) {
         window.setTimeout(() => {
@@ -110,7 +119,9 @@ export function DiaryEditor({
 
       applying.current = true;
       ed.commands.setContent(enriched as object);
-      onChange(ed.getJSON());
+      const updated = ed.getJSON();
+      lastEditorJson.current = JSON.stringify(updated);
+      onChange(updated);
       applying.current = false;
     } catch {
       // 保留已有内容，不打断输入
@@ -167,13 +178,29 @@ export function DiaryEditor({
 
       if (!urls.length) return;
 
-      const nodes = urls.flatMap((src, i) => {
-        const blocks: object[] = [{ type: "image", attrs: { src } }];
-        if (i < urls.length - 1) blocks.push({ type: "paragraph" });
-        return blocks;
-      });
+      const imageNodes = urls.map((src) => ({
+        type: "image" as const,
+        attrs: { src },
+      }));
 
-      editor.chain().focus().insertContent(nodes).run();
+      // 在当前块之后批量插入，避免选中图片时被替换
+      const insertPos = Math.min(
+        editor.state.selection.$to.after(),
+        editor.state.doc.content.size
+      );
+
+      applying.current = true;
+      const ok = editor
+        .chain()
+        .focus()
+        .insertContentAt(insertPos, imageNodes)
+        .run();
+      if (ok) {
+        const json = editor.getJSON();
+        lastEditorJson.current = JSON.stringify(json);
+        onChange(json);
+      }
+      applying.current = false;
     };
     input.click();
   }
